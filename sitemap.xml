@@ -1,0 +1,17 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/reference/GGAIN.html</loc></url>
+<url><loc>/reference/compute_GP_allGeno.html</loc></url>
+<url><loc>/reference/compute_GP_methods.html</loc></url>
+<url><loc>/reference/concordance_match_name.html</loc></url>
+<url><loc>/reference/data_summary.html</loc></url>
+<url><loc>/reference/format_curate_vcf.html</loc></url>
+<url><loc>/reference/format_names.html</loc></url>
+<url><loc>/reference/format_phenot.html</loc></url>
+<url><loc>/reference/getFolds.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/setup_scenarios.html</loc></url>
+</urlset>
+
