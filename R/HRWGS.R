@@ -14,9 +14,8 @@
 #'
 #' @return list with one lement per testing (environment) set.
 #' Within each testing set, list of training environment, testing environment, genotypes in training and testing sets, and phenotypic data in training and testing sets.
-#' @export
-#'
-#' @examples
+#' @author Charlotte Brault
+
 setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
                             ignore.genos=NULL,traits=NULL, genos=NULL,prop.CVS1=0.8){
   # envs.train=NULL
@@ -131,6 +130,7 @@ setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
 #' @param seed (optional) for reproducibility, set a seed.
 #'
 #' @return list of testing set indexes for each fold.
+#' @author Charlotte Brault
 
 getFolds <- function(index, nb.folds=5, seed=NULL){
   stopifnot(nb.folds <= index,
@@ -215,7 +215,7 @@ format_names <- function(names, toupper=TRUE, dashToUnderscore=FALSE,
 #' @param verbose integer, level of verbosity, default is 1
 #'
 #' @return a list of 3 elements: the correspondence data frame, the updated correspondence list, and a vector of new names to be applied to match name.
-
+#' @author Charlotte Brault
 concordance_match_name <- function(ref.name=NULL, match.name, allowNoMatch=TRUE,
                                    corresp.list=NULL, verbose=1){
   require(purrr); require(dplyr)
@@ -356,7 +356,7 @@ concordance_match_name <- function(ref.name=NULL, match.name, allowNoMatch=TRUE,
 #'                       cols2rem=c('DISK',"VRI",
 #'                                  "VIBE FDK *","VIBE_FDK"))
 #'
-#'
+#' @author Charlotte Brault
 format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait=8){
 
 
@@ -692,9 +692,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
 #' @param verbose numeric, level of verbosity, default is 1
 #'
 #' @return data frame with 0/1/2 values from the curated vcf file, with genotypes in row and markers in columns.
-#' @export
-#'
-#' @examples
+#' @author Charlotte Brault
 format_curate_vcf <- function(vcf.p2f=NULL,
                               matrix.gt=NULL,
                               mrk.info=NULL,
@@ -1118,10 +1116,8 @@ getGenoTas_to_DF <- function(tasGeno){
 #' @param nb.cores number of cores to parallelize the computation, default is 1 (no parallelization)
 #' @param p2f.stats path to file to export genomic prediction results, default is NULL
 #'
-#' @return
-#' @export
-#'
-#' @examples
+#' @return a list with the following elements: `obspred` with observed vs. predicted genotypic values, and `gp.stats` with genomic prediction statistics
+#' @author Charlotte Brault
 compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                                nfolds=10, h=1, nb.mtry=10, nIter=6000,burnIn=1000,
                                ntree=100,p2d.temp=NULL,
@@ -1345,7 +1341,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 #'
 #' @return a data frame with the predicted values for all genotypes and traits
 #' @seealso [compute_GP_methods()]
-#'
+#' @author Charlotte Brault
 compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                                runCV=FALSE, testSetGID=NULL,
                                nreps=10,nfolds=10, h=1, nb.mtry=10,
@@ -1514,7 +1510,7 @@ print_table <- function(table, rownames = FALSE, digits = 3, ...){
 #' @param add.pval logical, if TRUE, add p-values to the summary table
 #'
 #' @returns a gtsummary object
-
+#' @author Charlotte Brault
 data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
   require(gtsummary)
 
@@ -1548,7 +1544,7 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 #' @param first_year character vector of column names for first year of evaluation. Best if the first year is subtracted by the minimal first year for the estimation of the percentage of change
 #'
 #' @returns data frame with columns for trait, intercept, slope, R2.adj, pvalue and percentage of change
-
+#' @author Charlotte Brault
 GGAIN <- function(data, traits, first_year){
   stopifnot(all(traits %in% colnames(data)),
             all(first_year %in% colnames(data)))
@@ -1569,23 +1565,6 @@ GGAIN <- function(data, traits, first_year){
   return(df.fit)
 }
 
-
-### ----- Print table ------
-## from R metan package
-# Function to make HTML tables
-print_table <- function(table, rownames = FALSE, digits = 3, ...){
-  require(DT)
-  df <- DT::datatable(table, rownames = rownames, extensions = 'Buttons',
-                      options = list(scrollX = TRUE,
-                                     dom = '<<t>Bp>',
-                                     buttons = c('copy', 'excel', 'pdf', 'print')), ...)
-  num_cols <- c(as.numeric(which(sapply(table, class) == "numeric")))
-  if(length(num_cols) > 0){
-    DT::formatSignif(df, columns = num_cols, digits = digits)
-  } else{
-    df
-  }
-}
 
 
 ### ----- Plot palette ----
