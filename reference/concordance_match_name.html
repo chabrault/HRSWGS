@@ -41,8 +41,8 @@ Matching of names will be done based on the spelling of the names, without punct
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">concordance_match_name</span><span class="op">(</span></span>
-<span>  ref.name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">match.name</span>,</span>
+<span>  ref.name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  allowNoMatch <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  corresp.list <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  verbose <span class="op">=</span> <span class="fl">1</span></span>
@@ -53,12 +53,12 @@ Matching of names will be done based on the spelling of the names, without punct
     <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-ref-name">ref.name<a class="anchor" aria-label="anchor" href="#arg-ref-name"></a></dt>
-<dd><p>character vector of reference names</p></dd>
+<dl><dt id="arg-match-name">match.name<a class="anchor" aria-label="anchor" href="#arg-match-name"></a></dt>
+<dd><p>character vector of names to match (format)</p></dd>
 
 
-<dt id="arg-match-name">match.name<a class="anchor" aria-label="anchor" href="#arg-match-name"></a></dt>
-<dd><p>character vector of names to match</p></dd>
+<dt id="arg-ref-name">ref.name<a class="anchor" aria-label="anchor" href="#arg-ref-name"></a></dt>
+<dd><p>character vector of reference names. Default is NULL but it needs to be provided if corresp.list is NULL.</p></dd>
 
 
 <dt id="arg-allownomatch">allowNoMatch<a class="anchor" aria-label="anchor" href="#arg-allownomatch"></a></dt>
@@ -66,7 +66,8 @@ Matching of names will be done based on the spelling of the names, without punct
 
 
 <dt id="arg-corresp-list">corresp.list<a class="anchor" aria-label="anchor" href="#arg-corresp-list"></a></dt>
-<dd><p>named list of correspondence between names, with correct spelling as name and possible synonym as character vector, default is NULL, if provided, add new correspondence to the list. If there is a conflict between ref.names and corresp.list, the name in corresp.list will be used.</p></dd>
+<dd><p>named list of correspondence between names, with correct spelling as name and possible synonym as character vector, default is NULL.
+If provided, add new correspondence to the list. If there is a conflict between ref.names and corresp.list, the name in corresp.list will be used.</p></dd>
 
 
 <dt id="arg-verbose">verbose<a class="anchor" aria-label="anchor" href="#arg-verbose"></a></dt>
@@ -76,6 +77,10 @@ Matching of names will be done based on the spelling of the names, without punct
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>a list of 3 elements: the correspondence data frame, the updated correspondence list, and a vector of new names to be applied to match name.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
+    <p>Charlotte Brault</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
