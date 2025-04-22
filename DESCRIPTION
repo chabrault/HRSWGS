@@ -1,6 +1,6 @@
 Package: HRSWGS
 Type: Package
-Title: Hard Red Spring Wheat breeding genomic selection toolbox
+Title: Hard Red Spring Wheat breeding Genomic Selection toolbox
 Version: 0.1.0
 Authors@R: c(
     person(

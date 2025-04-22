@@ -208,15 +208,16 @@ format_names <- function(names, toupper=TRUE, dashToUnderscore=FALSE,
 #' Concordance of names between reference and match data
 #' Matching of names will be done based on the spelling of the names, without punctuation.
 #'
-#' @param ref.name character vector of reference names
-#' @param match.name character vector of names to match
+#' @param match.name character vector of names to match (format)
+#' @param ref.name character vector of reference names. Default is NULL but it needs to be provided if corresp.list is NULL.
 #' @param allowNoMatch logical, keep all values from match.name even when there is no match, default is TRUE
-#' @param corresp.list named list of correspondence between names, with correct spelling as name and possible synonym as character vector, default is NULL, if provided, add new correspondence to the list. If there is a conflict between ref.names and corresp.list, the name in corresp.list will be used.
+#' @param corresp.list named list of correspondence between names, with correct spelling as name and possible synonym as character vector, default is NULL.
+#' If provided, add new correspondence to the list. If there is a conflict between ref.names and corresp.list, the name in corresp.list will be used.
 #' @param verbose integer, level of verbosity, default is 1
 #'
 #' @return a list of 3 elements: the correspondence data frame, the updated correspondence list, and a vector of new names to be applied to match name.
 #' @author Charlotte Brault
-concordance_match_name <- function(ref.name=NULL, match.name, allowNoMatch=TRUE,
+concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
                                    corresp.list=NULL, verbose=1){
   require(purrr); require(dplyr)
   stopifnot(!all(is.null(ref.name) & is.null(corresp.list)))
@@ -317,7 +318,7 @@ concordance_match_name <- function(ref.name=NULL, match.name, allowNoMatch=TRUE,
 
 
 
-#' Format phenotypic data from GrainGenes (Excel table)
+#' Format phenotypic data from GrainGenes (Excel tables)
 #'
 #' @param p2d path to directory where tables are saved
 #' @param years numeric vector of years to look for
@@ -711,7 +712,8 @@ format_curate_vcf <- function(vcf.p2f=NULL,
                               corresp.geno.list=NULL,
                               imputation=NULL,
                               p2f.beagle=NULL,
-                              thresh.MAF=NULL,verbose=1){
+                              thresh.MAF=NULL,
+                              verbose=1){
   require(janitor)
   require(stringr)
   require(dplyr)
@@ -1075,6 +1077,13 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 
 
 ## author: Vishnu Ramasubramanian
+#' Convert TASSEL object to genotypic data frame
+#'
+#' @param tasGeno Genotypic object from TASSEL
+#'
+#' @returns matrix of genotypic data in 0/1/2 data frame format
+#' @keywords internal
+#' @author Vishnu Ramasubramanian
 getGenoTas_to_DF <- function(tasGeno){
   require(rTASSEL)
   require(rJava)
@@ -1154,7 +1163,8 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
     ## create cluster
     require(doSNOW); require(foreach)
-    cl <- makeCluster(type="SOCK",spec=nb.cores) ; registerDoSNOW(cl)
+    cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
+    doSNOW::registerDoSNOW(cl)
 
     for(r in 1:nreps){
       write(r, stderr())
@@ -1165,7 +1175,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
       if(GP.method %in% "rrBLUP"){
         require(rrBLUP)
         ## parallel computation of GP for rrBLUP
-        out <- foreach(f=1:nfolds) %dopar% {
+        out <- foreach::foreach(f=1:nfolds) %dopar% {
           ## estimate marker effects on training set
 
           res <- rrBLUP::kinship.BLUP(y=y[-folds[[f]]],
@@ -1184,7 +1194,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         K <- exp(-h*D)
 
         ## parallel processing
-        out <- foreach(f=1:nfolds,.errorhandling = "pass") %dopar% {
+        out <- foreach::foreach(f=1:nfolds,.errorhandling = "pass") %dopar% {
           ## estimate marker effects on training set
           yNA <- y
           yNA[folds[[f]]] <- NA
@@ -1207,7 +1217,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         }
 
         ## parallel processing
-        out <- foreach(f=1:nfolds,.errorhandling = "pass") %dopar% {
+        out <- foreach::foreach(f=1:nfolds,.errorhandling = "pass") %dopar% {
           ## estimate marker effects on training set
           yNA <- y
           yNA[folds[[f]]] <- NA
@@ -1227,7 +1237,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         #tunegridrf <- expand.grid(.mtry=seq(1,ncol(geno_tr)/3,length.out=nb.mtry))
         tunegridrf <- expand.grid(.mtry=c(100,500,1000,2000,5000))
         ## parallel processing
-        out <- foreach(f=1:nfolds,.errorhandling="pass") %dopar% {
+        out <- foreach::foreach(f=1:nfolds,.errorhandling="pass") %dopar% {
           ## estimate marker effects on training set
 
           fit <- caret::train(y=y[-folds[[f]]],
@@ -1237,7 +1247,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         }
       }else if(GP.method %in% "LASSO"){
         require(glmnet)
-        out <- foreach(f=1:nfolds) %dopar% {
+        out <- foreach::foreach(f=1:nfolds) %dopar% {
           ### Fit the model with glmnet package
           cv <- glmnet::cv.glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],], alpha=1)
           fit <- glmnet::glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],],
@@ -1247,7 +1257,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
       } else if(GP.method %in% "BayesA"){
         require(BGLR)
-        out <- foreach(f=1:nfolds) %dopar% {
+        out <- foreach::foreach(f=1:nfolds) %dopar% {
 
           if(!is.null(p2d.temp)){
             p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
@@ -1262,7 +1272,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
       } else if(GP.method %in% "BayesB"){
         require(BGLR)
-        out <- foreach(f=1:nfolds) %dopar% {
+        out <- foreach::foreach(f=1:nfolds) %dopar% {
           if(!is.null(p2d.temp)){
             p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
           }
@@ -1387,7 +1397,8 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 
   ## create cluster
   require(doSNOW); require(foreach)
-  cl <- makeCluster(type="SOCK",spec=nb.cores) ; registerDoSNOW(cl)
+  cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
+  doSNOW::registerDoSNOW(cl)
 
 
 
@@ -1396,7 +1407,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
   if(GP.method %in% "rrBLUP"){
     require(rrBLUP)
     ## parallel computation of GP for rrBLUP
-    out <- foreach(f=1:ntraits,.errorhandling = "pass",
+    out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
                    .combine = "rbind",.packages = "rrBLUP") %dopar% {
                      ## estimate marker effects on all available data
                      yNA <- merge(data.frame(GID=c(rownames(geno))),
@@ -1418,7 +1429,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
     rm(D)
 
     ## parallel processing over traits
-    out <- foreach(f=1:ntraits,.errorhandling = "pass",
+    out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
                    .combine = "rbind",.packages = "BGLR") %dopar% {
                      yNA <- merge(data.frame(GID=c(rownames(geno))),
                                   pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
@@ -1433,18 +1444,18 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 
   } else if(GP.method %in% c("BayesA","BayesB")){
     ## parallel processing over traits
-    out <- foreach(f=1:ntraits,.errorhandling = "pass",
-                   .combine = "rbind",.packages = "BGLR") %dopar% {
-                     yNA <- merge(data.frame(GID=c(rownames(geno))),
-                                  pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
-                     p2f.temp <- paste0(p2d.temp,"/",GP.method,"_PredAll_testSet_",f)
-                     ## fit model
-                     fit <- BGLR::BGLR(y=yNA[[traits[f]]],ETA=list(list(X=geno,model=GP.method)),
-                                       nIter=nIter,burnIn=burnIn,saveAt=p2f.temp,verbose=FALSE)
-                     ## output predicted values
-                     tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,trait=traits[f],yHat=fit$yHat)
-                     return(tmp)
-                   }
+    out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
+                            .combine = "rbind",.packages = "BGLR") %dopar% {
+                              yNA <- merge(data.frame(GID=c(rownames(geno))),
+                                           pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
+                              p2f.temp <- paste0(p2d.temp,"/",GP.method,"_PredAll_testSet_",f)
+                              ## fit model
+                              fit <- BGLR::BGLR(y=yNA[[traits[f]]],ETA=list(list(X=geno,model=GP.method)),
+                                                nIter=nIter,burnIn=burnIn,saveAt=p2f.temp,verbose=FALSE)
+                              ## output predicted values
+                              tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,trait=traits[f],yHat=fit$yHat)
+                              return(tmp)
+                            }
   }
 
   stopCluster(cl)
@@ -1482,7 +1493,50 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 }
 
 
-### ----- Print table ------
+#' Estimate genetic gain for selected traits
+#'
+#' @param data data frame with columns for traits and first year of evaluation
+#' @param traits character vector of trait names
+#' @param first_year character vector of column names for first year of evaluation.
+#' The first year will be subtracted by the minimal first year for the estimation of the intercept and percentage of change
+#'
+#' @returns data frame with columns for trait, intercept, slope, R2.adj, pvalue and percentage of change
+#' @author Charlotte Brault
+GGAIN <- function(data, traits, first_year){
+  stopifnot(all(traits %in% colnames(data)),
+            all(first_year %in% colnames(data)))
+  ## subtract the minimum first year to the calculation of the percentage of change
+  data$FIRST_YEAR0 <- data[[first_year]] - min(data[[first_year]], na.rm=T) +1
+
+  df.fit <- data.frame(trait=traits, intercept=NA, slope=NA,
+                       slope.min=NA, slope.max=NA, R2.adj=NA, pvalue=NA)
+  for(tr in traits){
+    fit <- lm(paste0(tr, "~ 1 + FIRST_YEAR0"), data = data)
+    idx <- which(df.fit$trait %in% tr)
+    ## add intercept and slope
+    df.fit[idx,c("intercept","slope")] <- round(c(coef(fit)[c(1,2)]),3)
+    ## get confidence interval
+    df.fit[idx,c("slope.min","slope.max")] <- round(confint(fit, "FIRST_YEAR0", level = 0.95)[,1:2],3)
+    ## get R2
+    df.fit[idx,"R2.adj"] <- round(summary(fit)$adj.r.squared,3)
+    ## get p-value
+    df.fit[idx,"pvalue"] <-  formatC(summary(fit)$coefficients[2,4], format="e", digits=2)
+  }
+  ## estimate the percentage of change
+  df.fit$percChange <- (df.fit$slope/df.fit$intercept)*100
+
+
+  return(df.fit)
+}
+
+
+## ----- Print / plot functions -----
+
+
+
+
+
+
 ## from R metan package
 # Function to make HTML tables
 print_table <- function(table, rownames = FALSE, digits = 3, ...){
@@ -1537,34 +1591,97 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 
 
 
-#' Estimate genetic gain for selected traits
+#' Plot distribution of breeding values
+#' Plot distribution of breeding values for each trait and add position of selected genotypes
 #'
-#' @param data data frame with columns for traits and first year of evaluation
-#' @param traits character vector of trait names
-#' @param first_year character vector of column names for first year of evaluation. Best if the first year is subtracted by the minimal first year for the estimation of the percentage of change
+#' @param BV data frame with breeding values, with GID in rows and traits in columns
+#' @param trait character vector of trait name (length 1)
+#' @param genoCol character vector of column name for GID (default is "GID")
+#' @param selGen character vector of selected genotypes to highlight in the plot
+#' @param colorCol character vector of column name for color (default is NULL)
 #'
-#' @returns data frame with columns for trait, intercept, slope, R2.adj, pvalue and percentage of change
-#' @author Charlotte Brault
-GGAIN <- function(data, traits, first_year){
-  stopifnot(all(traits %in% colnames(data)),
-            all(first_year %in% colnames(data)))
-  df.fit <- data.frame(trait=traits, intercept=NA, slope=NA, R2.adj=NA, pvalue=NA)
-  for(tr in traits){
-    fit <- lm(paste0(tr, "~ 1 + ", first_year), data = data)
-    idx <- which(df.fit$trait %in% tr)
-    df.fit[idx,c("intercept","slope")] <- round(c(coef(fit)[c(1,2)]),3)
-    ## get R2
-    df.fit[idx,"R2.adj"] <- round(summary(fit)$adj.r.squared,3)
-    ## get p-value
-    df.fit[idx,"pvalue"] <-  formatC(summary(fit)$coefficients[2,4], format="e", digits=2)
+#' @returns a ggplot object
+#'
+plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=NULL){
+
+  ## add verifications
+  if(!trait %in% colnames(BV)){
+    stop(paste0("Trait ", trait, " not found in the dataset"))
+    stopifnot(length(trait) == 1)
   }
-  ## estimate the percentage of change
-  df.fit$percChange <- (df.fit$slope/df.fit$intercept)*100
-  ## TODO: add the minimum first year to the calculation of the percentage of change
+  if(!genoCol %in% colnames(BV)){
+    stop(paste0("Genotype column ", genoCol, " not found in the dataset"))
+  }
+  if(!is.null(selGen) && !all(selGen %in% BV[[genoCol]])){
+    stop(paste0("Selected genotypes not found in the dataset"))
+  }
+  if(!is.null(colorCol) && !colorCol %in% colnames(BV)){
+    stop(paste0("Color column ", colorCol, " not found in the dataset"))
+  }
+  ## split the distribution into densities
+  x <- BV[[trait]]
+  q15.9 <- quantile(x, .159,na.rm=TRUE) # 1 Std 68.2%
+  q84.1 <- quantile(x, .841,na.rm=TRUE)
+  q2.3  <- quantile(x, .023,na.rm=TRUE) # 2 Std 95.4%
+  q97.7 <- quantile(x, .977,na.rm=TRUE)
+  q0.01 <- quantile(x, .001,na.rm=TRUE) # 3 Std 99.8%
+  q99.9 <- quantile(x, .999,na.rm=TRUE)
+  meanx <- mean(x,na.rm=TRUE)
+  medx  <- median(x,na.rm=TRUE)
+  x.dens  <- density(x,na.rm=TRUE)
+  df.dens <- data.frame(x=x.dens$x, y=x.dens$y)
 
-  return(df.fit)
+
+  ## compose the plot
+  p <- ggplot(BV, aes(x=.data[[trait]]))+
+    geom_density(color = 'skyblue') +
+    geom_area(data = subset(df.dens, x >= q15.9 & x <= q84.1), # 1 Std 68.2%
+              aes(x=x,y=y), fill='skyblue', alpha=0.8) +
+    geom_area(data = subset(df.dens, x >= q2.3 & x <= q97.7), # 2 Std 95.4%
+              aes(x=x,y=y), fill='skyblue', alpha=0.6) +
+    geom_area(data = subset(df.dens, x >= q0.01 & x <= q99.9), # 3 Std 99.8%
+              aes(x=x,y=y), fill='skyblue', alpha=0.3) +
+    geom_vline(xintercept=meanx, color="grey60", linewidth=1.5, linetype="dashed") +
+    geom_vline(xintercept=medx, color='#FFFFFF',linewidth=1.5, linetype="dashed") +
+    labs(title=trait,x=trait, y="Density") +
+    bigstatsr::theme_bigstatsr(size.rel=0.8)+
+    geom_rug(alpha=0.8, color="skyblue")
+
+  if(!is.null(selGen)){
+    ## subset the dataset for the selected genotypes
+    dat.sel <- BV[BV[[genoCol]] %in% selGen,]
+    require(ggrepel)
+    require(viridis)
+    p <- p+ geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]], color=.data[[colorCol]]),
+                     linewidth=1, sides="b", inherit.aes = FALSE)
+
+    if(is.numeric(dat.sel[[colorCol]])){
+      p <- p +
+        ggrepel::geom_label_repel(data=dat.sel,
+                                  mapping = aes(x=.data[[trait]],y=0,
+                                                label=.data[[genoCol]],fill=.data[[colorCol]]),
+                                  color="black",direction="y",point.padding = 0.01,
+                                  force_pull = 0.1,size=3,
+                                  vjust=0.6, max.overlaps = Inf,
+                                  fontface="bold",alpha=0.7) +
+        viridis::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
+        viridis::scale_color_viridis_d(begin=0.35, direction=1,option="H")
+    } else {
+      p <- p +
+        ggrepel::geom_label_repel(data=dat.sel,
+                                  mapping = aes(x=.data[[trait]],y=0,
+                                                label=.data[[genoCol]],fill=.data[[colorCol]]),
+                                  color="black", direction="y",point.padding = 0.01,
+                                  force_pull = 0.1,size=3,
+                                  vjust=0.6, max.overlaps = Inf,
+                                  fontface="bold",alpha=0.7)+
+        viridis::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
+        viridis::scale_color_viridis_d(begin=0.35, direction=1,option="H")
+    } ## end if colorCol
+  } ## end if selGen
+  plot(p)
+  return(p)
 }
-
 
 
 ### ----- Plot palette ----
