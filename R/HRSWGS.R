@@ -151,9 +151,7 @@ getFolds <- function(index, nb.folds=5, seed=NULL){
 #' @param verbose logical, default to FALSE
 #'
 #' @return list of initial and corrected names
-#' @export
 #'
-#' @examples
 format_names <- function(names, toupper=TRUE, dashToUnderscore=FALSE,
                          pedigree=FALSE,verbose=FALSE){
   require(stringr)
@@ -1684,7 +1682,558 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
 }
 
 
-### ----- Plot palette ----
+#' Interactively select rows from a table with filters and download
+#'
+#' @param data data frame with numeric variables
+#' @param vars.inc character vector of variable names sought to be increased to include in the color gradient
+#' @param vars.dec character vector of variable names sought to be decreased to include in the color gradient
+#' @param output.cols character vector of variable names to include in the output file, if not provided, all columns will be included
+#'
+#' @returns a shiny app with a table and a download button
+#'
+SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL){
+  require(shiny)
+  require(DT)
+  num_cols <- c(as.numeric(which(sapply(data, class) == "numeric")))
+
+  if(is.null(output.cols)) output.cols <- colnames(data)
+  vars <- c(vars.inc, vars.dec)
+  stopifnot(all(vars %in% colnames(data)))
+  data[,vars] <- apply(data[,vars],2, as.numeric)
+
+  ## set character columns to factor
+  data <- data |> mutate(across(where(is.character), as.factor))
+
+  ## if not defined, select all numeric columns
+  if(is.null(vars.inc) & is.null(vars.dec)){
+    vars.inc <- sapply(data, function(x) is.numeric(x) & !is.integer(x))
+    vars.dec <- NULL
+  }
+
+  # Create selectable table
+  dt <- data |>
+    as.data.frame() |>
+    DT::datatable(data, rownames = FALSE, extensions = 'Buttons',
+                  filter=list(position="top",clear=F,selection = "multiple"),
+                  options = list(scrollX = TRUE,
+                                 autoWidth = TRUE,
+                                 pageLength=7,
+                                 dom = '<<t>Bp>',
+                                 buttons = c('copy', 'excel', 'pdf', 'print'),
+
+                                 columnDefs = list(list(className = 'dt-center', targets = "_all")),
+                                 render=JS(
+                                   "function(data, type, row, meta) {",
+                                   "return type === 'display' && data.length > 10 ?",
+                                   "'<span title=\"' + data + '\">' + data.substr(0, 10) + '...</span>' : data;",
+                                   "}")
+                  )
+    )
+
+  if(length(num_cols) > 0){
+    dt <- DT::formatSignif(dt, columns = num_cols, digits = 3)
+  }
+
+  #print_table(digits = 3,pageLength=10, filter=list(position="top",clear=F,selection = "multiple"))
+
+  pal <- "ggthemes::Temperature Diverging" ## "grDevices::Temps"
+  #"ggthemes::Red-Green-Gold Diverging"
+
+  # Loop through the columns formatting according to that column's distribution
+  for (tr in vars) {
+    # Create breaks for shading column values high to low
+    brks <- stats::quantile(x <- data[[tr]], probs = seq(.05, .95, .01), na.rm = TRUE)
+    # Create shades of green for backgrounds
+    y <- round(seq(255, 40, length.out = length(brks) + 1), 0)
+    #clrs <- paste0("rgb(", y, ", 255,", y, ")")
+    cols <- paletteer::paletteer_c(pal,n=length(brks)+1, direction=ifelse(tr %in% vars.inc,-1,1))
+    # Format cells in j-th column
+    dt <- DT::formatStyle(dt, tr, backgroundColor = DT::styleInterval(brks, cols))
+    rm(brks,cols)
+  }
+
+  ## create the shinyApp part
+  shiny::shinyApp(
+    ui=fluidPage(
+      titlePanel("Filter and Select Rows in Table"),
+      DT::DTOutput("table"),
+      downloadButton("download", "Download Selected genotypes")
+    ),
+    server=function(input, output, session) {
+      output$table <- DT::renderDT({dt} ,server = FALSE)
+
+      selected_ids <- shiny::reactive({
+        input$table_rows_selected
+      })
+
+      output$download <- downloadHandler(
+        filename = function() { "selected_ids.csv" },
+        content = function(file) {
+          write.csv(data[selected_ids(), output.cols, drop = FALSE], file, row.names = FALSE)
+        }
+      )
+    }
+  )
+
+}
+
+
+## ----- Format T3 -----
+
+#' Create table and file to add accession to T3
+#'
+#' @param dat data frame with genotype information
+#' @param checkDB logical, whether to check the T3 database with `BrAPI` package to exclude accessions already in the database, default is TRUE.
+#' @param p2f path to file to write the output of the function
+#' @param return_table logical, whether to return the table or not, default is TRUE.
+#' @param accession_name character string, name of the column in `dat` that contains the accession name
+#' @param population_name character string, name of the column in `dat` that contains the population name
+#' @param `organization_name(s)` charac6er string, name of the column in `dat` that contains the organization name
+#' @param `synonym(s)` character string, name of the column in `dat` that contains the synonym name
+#' @param `variety(s)` character string, name of the column in `dat` that contains the variety name
+#' @param `country_of_origin(s)` character string, name of the column in `dat` that contains the country of origin
+#' @param `notes(s)` character string, name of the column in `dat` that contains the notes
+#' @param `accession_number(s)` character string, name of the column in `dat` that contains the accession number
+#' @param purdy_pedigree character string, name of the column in `dat` that contains the purdy pedigree
+#' @param filial_generation character string, name of the column in `dat` that contains the filial generation
+#' @param species_name character string, name of the species, default is "Triticum aestivum" (fixed).
+#'
+#' @return a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
+
+create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE,
+                              accession_name=NULL, population_name=NULL,
+                              `organization_name(s)`=NULL, `synonym(s)`=NULL,
+                              `variety(s)`= NULL,`country_of_origin(s)`=NULL,
+                              `notes(s)`= NULL, `accession_number(s)`=NULL,
+                              purdy_pedigree=NULL,filial_generation=NULL,
+                              species_name="Triticum aestivum"){
+  require(openxlsx)
+  require(dplyr)
+
+  ## Verifications
+  stopifnot(!is.null(dat), !is.null(p2f) |!return_table,
+            !is.null(accession_name), !is.null(population_name),
+            length(accession_name) == 1, length(population_name) == 1,
+            is.data.frame(dat))
+
+
+  colsFormat <- c(accession_name,population_name ,
+                  `organization_name(s)`,`synonym(s)`,
+                  `variety(s)`,`country_of_origin(s)`,
+                  `notes(s)`,`accession_number(s)` ,purdy_pedigree ,
+                  filial_generation)
+  names(colsFormat) <- c("accession_name","population_name" ,
+                         "organization_name(s)","synonym(s)",
+                         "variety(s)","country_of_origin(s)","notes(s)",
+                         "accession_number(s)","purdy_pedigree","filial_generation")
+
+  colsGeno <- na.omit(colsFormat)
+  ## verify that all column written exists in the table
+  stopifnot(all(colsGeno %in% colnames(dat)))
+  dat.geno <- dat[,colsGeno] %>% dplyr::distinct()
+  ## change column names to what is expected in T3
+  colnames(dat.geno) <- plyr::mapvalues(colnames(dat.geno), from=na.omit(colsFormat),
+                                        to=names(na.omit(colsFormat)))
+
+  ## add other empty columns
+  for(col in names(colsFormat)){
+    if(is.na(colsFormat[col])){
+      dat.geno[[col]] <- ""
+    }
+  }
+  #head(dat.geno)
+
+  T3.accession <- cbind(dat.geno,species_name=species_name)
+  T3.accession <- dplyr::relocate(T3.accession,"species_name", .after="accession_name")
+
+  ## check and subset to accessions that are not in the database
+  if(checkDB){
+    require(BrAPI)
+    print("Check if accessions are already in the database")
+    conn <- BrAPI::getBrAPIConnection("T3/Wheat")
+
+    searchGeno = conn$post("search/germplasm",
+                           body=list(germplasmNames=as.list(T3.accession$accession_name)))
+
+    # extract the search id from the first response
+    id = searchGeno$content$result$searchResultsDbId
+    # get the search results
+    searchGeno = conn$get(paste0("search/germplasm/", id), pageSize=10000)$data
+    ## check if the accessions are already in the database
+    identical(map_chr(searchGeno, "germplasmName"),
+              map_chr(searchGeno, "defaultDisplayName"))
+    ## find the accessions that are in accession_list and not in T3
+    toAdd <- setdiff(T3.accession$accession_name,purrr::map_chr(searchGeno, "germplasmName"))
+    length(toAdd) ## number of accessions to add
+    print(paste0("Number of accessions to add: ",length(toAdd)))
+    ## keep only those accessions to the final table
+    T3.accession <- T3.accession[T3.accession$accession_name %in% toAdd,]
+
+  }
+  ## write to file
+  if(!is.null(p2f)){
+    openxlsx::write.xlsx(x=T3.accession, file=p2f,colNames = TRUE)
+    print(paste0("Accessions successfully written to ",p2f))
+  }
+
+  if(return_table){
+    return(T3.accession)
+  }
+
+}
+
+
+
+
+#' Create table and file to add trials to T3
+#'
+#' @param dat data frame with trial information
+#' @param checkDB logical, whether to check the T3 database with `BrAPI` package to exclude trials already in the database, default is TRUE.
+#' @param p2f path to file (with xlsx extension) to write the output of the function
+#' @param return_table logical, whether to return the table or not, default is TRUE.
+#' @param keepID character string, ID column to keep in the table (returned not exported)
+#' @param year character string, name of the column in `dat` that contains the year, mandatory.
+#' @param location character string, name of the column in `dat` that contains the location, mandatory.
+#' @param accession_name character string, name of the column in `dat` that contains the accession name, mandatory.
+#' @param transplanting_date character string, name of the column in `dat` that contains the transplanting date.
+#' @param plot_number character string, name of the column in `dat` that contains the plot number. If not present, increasing number from 1000.
+#' @param planting_date character string, name of the column in `dat` that contains the planting date.
+#' @param harvest_date character string, name of the column in `dat` that contains the harvest date.
+#' @param block_number character string, name of the column in `dat` that contains the block number, if not present, filled with 1.
+#' @param is_a_control character string, name of the column in `dat` that contains the control status, filled with 0/1.
+#' @param rep_number character string, name of the column in `dat` that contains the rep number, if not present, filled with 1.
+#' @param range_number character string, name of the column in `dat` that contains the range number.
+#' @param row_number character string, name of the column in `dat` that contains the row number.
+#' @param col_number character string, name of the column in `dat` that contains the column number.
+#' @param plot_width character string, name of the column in `dat` that contains the plot width in meters.
+#' @param plot_length character string, name of the column in `dat` that contains the plot length in meters.
+#' @param field_size character string, name of the column in `dat` that contains the field size.
+#' @param seedlot_name character string, name of the column in `dat` that contains the seedlot name.
+#' @param num_seed_per_plot character string, name of the column in `dat` that contains the number of seed per plot.
+#' @param prefix_BP character string, prefix for the breeding program, default is "URSN".
+#' @param weight_gram_seed_per_plot character string, name of the column in `dat` that contains the weight of seed per plot in grams.
+#' @param is_private character string, name of the column in `dat` that contains the private status, set as 1 if private.
+#' @param design_type character string, name of the column in `dat` that contains the design type, default is "RCBD".
+#' @param trial_type character string, name of the column in `dat` that contains the trial type, default is "phenotyping_trial".
+#' @param description character string, name of the column in `dat` that contains the description of the trial, default is "Cooperative nursery of scab trials".
+#' @param breeding_program character string, name of the column in `dat` that contains the breeding program, default is "Regional Scab Nursery Cooperative".
+#'
+#' @return a data frame with the trials to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
+#' @seealso [create_accessions(), create_phenot()]
+
+create_trials <- function(dat=NULL,
+                          checkDB=TRUE,
+                          p2f=NULL,
+                          return_table=TRUE,
+                          keepID=NULL,
+                          year=NULL,
+                          location=NULL,
+                          accession_name=NULL,
+                          transplanting_date=NA,
+                          plot_number=NA,
+                          planting_date=NA,
+                          harvest_date=NA,
+                          block_number=NA,
+                          is_a_control=NA,
+                          rep_number=NA,
+                          range_number=NA,
+                          row_number=NA,
+                          col_number=NA,
+                          plot_width=NA,
+                          plot_length=NA,
+                          field_size=NA,
+                          seedlot_name=NA,
+                          num_seed_per_plot=NA,
+                          weight_gram_seed_per_plot=NA,
+                          location_state_corresp=NULL,
+                          prefix_BP="URSN",
+                          is_private=NA,
+                          design_type="RCBD",
+                          trial_type="phenotyping_trial",
+                          description="Cooperative nursery of scab trials",
+                          breeding_program="Regional Scab Nursery Cooperative"){
+
+  require(openxlsx) ; require(dplyr);  require(purrr)
+
+  ## Verifications
+  stopifnot(!is.null(dat), !is.null(p2f) |!return_table,
+            !is.null(year), !is.null(location), !is.null(accession_name),
+            is.data.frame(dat))
+
+  if(is.null(location_state_corresp)){
+    location_state_corresp <-
+      list("MN"=c("St. Paul","Crookston", "Morris","Fergus Falls","Sabin","Waseca"),
+           "ND"=c("Fargo","Prosper","Langdon","Carrington", "Minot","Casselton",
+                  "Williston","Hettinger","Thompson","Berthold","Dickinson","Forman"),
+           "SD"=c("Brookings", "Selby","Groton","Aberdeen","Madison","Highmore",
+                  "Watertown","Redfield"),
+           "MB, Canada"=c("Morden","Glenlea", "Winnipeg"),
+           "NE"=c("Sidney_NE","Mead")
+           )
+  }
+
+
+  colsFormat <- c(year,location,accession_name,plot_number,
+                  planting_date, harvest_date,transplanting_date,
+                  block_number, is_a_control, rep_number, range_number,
+                  row_number, col_number, plot_width, plot_length, field_size,
+                  seedlot_name,num_seed_per_plot,
+                  weight_gram_seed_per_plot,is_private)
+  names(colsFormat) <- c("year","location","accession_name","plot_number",
+                         "planting_date", "harvest_date","transplanting_date",
+                         "block_number", "is_a_control", "rep_number",
+                         "range_number","row_number", "col_number",
+                         "plot_width", "plot_length", "field_size",
+                         "seedlot_name","num_seed_per_plot",
+                         "weight_gram_seed_per_plot","is_private")
+  colsTrial <- na.omit(colsFormat)
+
+  stopifnot(all(colsTrial %in% colnames(dat)))
+  dat.trial <- dat %>%
+    dplyr::select(all_of(c(keepID,colsTrial))) %>%
+    dplyr::distinct()
+
+  colnames(dat.trial) <- plyr::mapvalues(colnames(dat.trial), from=na.omit(colsFormat),
+                                         to=names(na.omit(colsFormat)), warn_missing = FALSE)
+
+
+  ## define a unique id for trial name: paste location and year
+  dat.trial$trial_name <- paste0(prefix_BP,"_",dat.trial[[year]],"_",dat.trial[[location]])
+  ### Replace string St. Paul by StPaul
+  dat.trial$trial_name <- gsub(pattern="St. ", replacement="St", x=dat.trial$trial_name)
+
+
+  ## to execute only if plot number is not available: compute it as sequential number
+  if(is.na(plot_number)){
+    dat.trial <-  purrr::map_dfr(split(dat.trial, dat.trial$trial_name),
+                                 function(x) cbind(x, plot_number=seq(1000,length.out=nrow(x))))
+  }
+  ## add plot name by pasting trial name and plot number
+  dat.trial$plot_name <- paste0(dat.trial$trial_name,"_PLOT",
+                                dat.trial$plot_number)
+  stopifnot(!any(duplicated(dat.trial$plot_name)))
+
+  ## associate locations with states
+  for(st in names(location_state_corresp)){
+    locs <- location_state_corresp[[st]]
+    if(length(locs) > 0){
+      idx <- which(dat.trial[[location]] %in% locs)
+      if(length(idx) > 0){
+        dat.trial[[location]][idx] <- paste0(dat.trial[[location]][idx],", ",st)
+      }
+    }
+  }
+
+  # ## Minnesota
+  # MNlocs <- c("St. Paul","Crookston", "Morris")
+  # ## North Dakota
+  # NDlocs <- c("Fargo","Prosper","Langdon","Carrington", "Minot")
+  # ## South Dakota
+  # SDlocs <- c("Brookings", "Selby","Groton")
+  # ## Manitoba
+  # MBlocs <- c("Morden","Glenlea", "Winnipeg")
+  #
+  # allLocs <- c(MNlocs, NDlocs, SDlocs, MBlocs)
+  # ## add suffix with state information after location name
+  # if(length(setdiff(unique(dat.trial[[location]]), allLocs)) > 0){
+  #   print(paste("Missing locations",setdiff(unique(dat.trial[[location]]), allLocs)))
+  # }
+  # idxMN <- which(dat.trial[[location]] %in% MNlocs)
+  # if(length(idxMN) >0){
+  #   dat.trial[[location]][idxMN] <- paste0(dat.trial[[location]][idxMN],", MN")
+  # }
+  # idxND <- which(dat.trial[[location]] %in% NDlocs)
+  # if(length(idxND) >0){
+  #   dat.trial[[location]][idxND] <- paste0(dat.trial[[location]][idxND],", ND")
+  # }
+  # idxSD <- which(dat.trial[[location]] %in% SDlocs)
+  # if(length(idxSD) >0){
+  #   dat.trial[[location]][idxSD] <- paste0(dat.trial[[location]][idxSD],", SD")
+  # }
+  # idxMB <- which(dat.trial[[location]] %in% MBlocs)
+  # if(length(idxMB) >0){
+  #   dat.trial[[location]][idxMB] <- paste0(dat.trial[[location]][idxMB],", MB, Canada")
+  # }
+
+  idxMiss <- grep(pattern=", ", dat.trial[[location]], invert = TRUE)
+  if(length(idxMiss) > 0){
+    print(paste("Missing location states: ",unique(dat.trial[[location]][idxMiss])))
+  }
+
+
+  if(checkDB){
+    require(BrAPI)
+
+    selected_breeding_program <- breeding_program
+    conn <- BrAPI::getBrAPIConnection("T3/Wheat")
+    resp <- conn$get("/studies", query=list(programName=selected_breeding_program), page="all")
+    ## extract relevant information, using purrr package
+    df.T3.trial <- data.frame(trialName=purrr::map_chr(list_flatten(resp$data),"studyName"),
+                              trialId=purrr::map_chr(list_flatten(resp$data),"studyDbId"),
+                              locName=purrr::map_chr(list_flatten(resp$data),"locationName"),
+                              year=unlist(list_flatten(map(list_flatten(resp$data),"seasons"))))
+    # plantDate=purrr::map_chr(list_flatten(resp$data),"startDate"))
+
+    dat.trial <- dat.trial[!dat.trial$trial_name %in% df.T3.trial$trialName,]
+
+    ## remove the name of state or country
+    df.T3.trial$locName2 <- str_remove(string = df.T3.trial$locName, pattern="(, [a-zA-Z]+)+$")
+    ## check if there is already trials for the specific year and location that has not been removed
+    idx <- which(dat.trial$location %in% df.T3.trial$locName2 &
+                   dat.trial$year %in% df.T3.trial$year)
+    if(length(idx) > 0){
+      print(paste("Trials already in the database: ",
+                  paste(unique(dat.trial$trial_name[idx]),", ")))
+      dat.trial <- dat.trial[-idx,]
+    }
+
+
+    ## test if trial is already present in T3
+    stopifnot(!any(dat.trial$trial_name %in% df.T3.trial$trialName))
+  } # end if checkDB
+
+
+
+  ## format planting and harvest date columns in date format
+  if(!is.na(planting_date)){
+    dat.trial$planting_date <- as.Date(dat.trial$planting_date)
+  } else{
+    dat.trial$planting_date <- ""
+  }
+  if(!is.na(harvest_date)){
+    dat.trial$harvest_date <- as.Date(dat.trial$harvest_date)
+  } else{
+    dat.trial$harvest_date <- ""
+  }
+
+  ## set as blank if column is not present, set as 1 for block_number and rep_number
+  for(col in names(colsFormat)){
+    if(col %in% c("plot_number","plot_name")){
+      next
+    } else{
+      if(is.na(colsFormat[col])){
+        dat.trial[[col]] <- ""
+        if(col %in% "block_number"){
+          dat.trial[[col]] <- 1
+        }
+        if(col %in% "rep_number"){
+          dat.trial[[col]] <- 1
+        }
+      }
+    }
+  }
+
+  ## for control column, replace TRUE/FALSE with 1/0
+  if(!is.na(colsFormat["is_a_control"])){
+    if(class(dat.trial$is_a_control) == "logical"){
+      dat.trial$is_a_control <- plyr::mapvalues(dat.trial$is_a_control,
+                                                from=c(TRUE,FALSE),to=c(1,0))
+    }
+  }
+
+
+  colN <- c("trial_name","breeding_program","location","year",
+            "transplanting_date","design_type",
+            "description","trial_type","plot_width","plot_length","field_size",
+            "planting_date","harvest_date","plot_name","accession_name",
+            "plot_number","block_number","is_a_control","rep_number",
+            "range_number","row_number","col_number","seedlot_name",
+            "num_seed_per_plot","weight_gram_seed_per_plot","is_private")
+  if(!is.null(keepID)){colN <- c(keepID,colN)}
+
+  T3.trial <- cbind(dat.trial,#[,!colnames(dat.trial) %in% "ID"],
+                    breeding_program=breeding_program,
+                    design_type=design_type,description=description,
+                    trial_type=trial_type)
+
+  ## reorder columns
+  stopifnot(all(colnames(T3.trial) %in% colN),
+            all(colN %in% colnames(T3.trial)))
+  T3.trial <- T3.trial[,colN]
+  head(T3.trial)
+
+  stopifnot(T3.trial$design_type %in% c("","CRD","RCBD","RRC","DRRC","ARC","Alpha",
+                                        "Lattice","Augmented","MAD","greenhouse",
+                                        "splitplot","p-rep","Westcott"),
+            is.numeric(T3.trial$plot_number),
+            T3.trial$block_number != "")
+
+  if(!is.null(p2f)){
+    openxlsx::write.xlsx(x=T3.trial[,!colnames(T3.trial) %in% keepID],
+                         file=p2f,colNames = TRUE)
+    print(paste0("Trials successfully written to ",p2f))
+  }
+  if(return_table){
+    return(T3.trial)
+  }
+
+}
+
+
+#' Create table and file to add phenotypes in T3
+#'
+#' @param dat data frame with phenotypic data, containing at least the plot name and the traits
+#' @param df_corresp_trait data frame with the correspondence between the column names in `dat` and the traits in T3, must countain the columns `T3_trait` and `corresp_col`.
+#' @param p2f path to file to write the output of the function
+#' @param return_table logical, whether to return the table or not, default is TRUE.
+#' @param plot_name_col character string, name of the column in `dat` that contains the plot name, default is "plot_name"
+#'
+#' @return a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`.
+
+create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
+                          return_table=TRUE, plot_name_col=NULL){
+  require(openxlsx)
+  require(dplyr)
+  require(purrr)
+
+  df_corresp_trait <- na.omit(df_corresp_trait)
+
+  ## Verifications
+  stopifnot(!is.null(df_corresp_trait), !is.null(p2f) |!return_table,
+            is.data.frame(df_corresp_trait), is.data.frame(dat),
+            all(df_corresp_trait$corresp.col %in% colnames(dat)),
+            all(c("T3_trait","corresp_col") %in% colnames(df_corresp_trait)))
+
+  ## select ID column and traits that are in the correspondence table
+  T3.phenot <- dat %>%
+    dplyr::select(all_of(c(plot_name_col,
+                           intersect(df_corresp_trait$corresp_col, colnames(dat))))) %>%
+    dplyr::distinct()
+  ## set column names to what is expected in T3
+  colnames(T3.phenot) <- plyr::mapvalues(colnames(T3.phenot),
+                                         from=df_corresp_trait$corresp_col,
+                                         to=df_corresp_trait$T3_trait)
+  traits <- intersect(colnames(T3.phenot),df_corresp_trait$T3_trait)
+
+  ## set traits as numeric
+  T3.phenot[,traits] <- apply(T3.phenot[,traits],2, as.numeric)
+
+  ## verify some units
+  idxPerc <- grep("%",colnames(T3.phenot))
+
+  stopifnot(all(apply(T3.phenot[,idxPerc], 2, min, na.rm=T) >= 0),
+            all(apply(T3.phenot[,idxPerc], 2, min, na.rm=T) <= 100),
+            all(apply(T3.phenot[,traits],2, is.numeric)))
+
+  ## export to Excel file
+  if(!is.null(p2f)){
+    openxlsx::write.xlsx(x=T3.phenot, file=p2f,colNames = TRUE)
+    print(paste0("Phenotypes successfully written to ",p2f," for ",
+                 length(traits)," traits"))
+  }
+  if(return_table){
+    return(T3.phenot)
+  }
+
+}
+
+
+
+
+
+
+
+## ----- Plot palette ----
 pal_loc <- function(){
   return(c("GLL"="#AA3939",
            "MRD"="#FFA91B",
