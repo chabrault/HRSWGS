@@ -20,4 +20,13 @@ Suggests:
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
 Imports: 
-    magrittr
+      ggplot2,
+      tidyr,
+      plyr,
+      dplyr,
+      purrr,
+      ggpubr,
+      parallel,
+      foreach,
+      doParallel,
+      magrittr

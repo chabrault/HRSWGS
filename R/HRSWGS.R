@@ -305,7 +305,7 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
   new.names <- plyr::mapvalues(df.merged$match.name[match(input.name,df.merged$match.name)],
                                from=df.merged$match.name,
                                to=df.merged$new.name)
-  df.changes <- df.merged |> dplyr::filter(new.name != match.name) |>
+  df.changes <- df.merged %>% dplyr::filter(new.name != match.name) %>%
     dplyr::select(tidyselect::all_of(c("match.name","new.name")))
 
   return(list(df.corresp=df.merged,
@@ -844,7 +844,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
         ## fill NA values with data from other columns if available
         idxna <- which(is.na(tmp[,idxLessNa]))
         for(i in 1:ncol(tmp)){
-          tmp[idxna,idxLessNa] <- coalesce(tmp[idxna,idxLessNa],tmp[idxna,i])
+          tmp[idxna,idxLessNa] <- dplyr::coalesce(tmp[idxna,idxLessNa],tmp[idxna,i])
         }
         ## suppress duplicated columns, keep the one with less NA values and filled
         vcf.file[,idx.genodup[idxLessNa]] <- tmp[,idxLessNa]
@@ -1146,7 +1146,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
     ## create cluster
-    require(doSNOW); require(foreach)
+    requireNamespace(doSNOW); requireNameSpace(foreach)
     cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
     doSNOW::registerDoSNOW(cl)
 
@@ -1159,9 +1159,8 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
       if(GP.method %in% "rrBLUP"){
         require(rrBLUP)
         ## parallel computation of GP for rrBLUP
-        out <- foreach::foreach(f=1:nfolds) %dopar% {
+        out <- foreach::foreach(f=1:nfolds) %dopar%{
           ## estimate marker effects on training set
-
           res <- rrBLUP::kinship.BLUP(y=y[-folds[[f]]],
                                       G.train=geno_tr[-folds[[f]],],
                                       G.pred=geno_tr[folds[[f]],], K.method="RR")$g.pred
@@ -1290,7 +1289,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
     } ## end for rep
 
-    stopCluster(cl)
+    parallel::stopCluster(cl)
 
   } ## end for trait
 
@@ -1298,9 +1297,9 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
   if(!is.null(p2f.stats)){
     ext <- tools::file_ext(p2f.stats)
     if(ext %in% c("csv")){
-      write.csv(gp.stats, file=p2f.stats, row.names=FALSE)
+      utils::write.csv(gp.stats, file=p2f.stats, row.names=FALSE)
     } else if(ext %in% c("txt","tsv")){
-      write.table(file=p2f.stats, gp.stats, sep="\t", row.names=FALSE, col.names=TRUE)
+      utils::write.table(file=p2f.stats, gp.stats, sep="\t", row.names=FALSE, col.names=TRUE)
     } else if(ext %in% "rds"){
       saveRDS(gp.stats, file=p2f.stats)
     }
@@ -1336,6 +1335,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 #' @return a data frame with the predicted values for all genotypes and traits
 #' @seealso [compute_GP_methods()]
 #' @author Charlotte Brault
+#'
 compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                                runCV=FALSE, testSetGID=NULL,
                                nreps=10,nfolds=10, h=1, nb.mtry=10,
@@ -1380,12 +1380,9 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 
 
   ## create cluster
-  require(doSNOW); require(foreach)
+  requireNamespace(doSNOW); requireNamespace(foreach)
   cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
   doSNOW::registerDoSNOW(cl)
-
-
-
   ## run genomic prediction on all genotypes
 
   if(GP.method %in% "rrBLUP"){
@@ -1442,9 +1439,9 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                             }
   }
 
-  stopCluster(cl)
+  parallel::stopCluster(cl)
   ## set the predicted values in a wide format, with one column per trait
-  all.pred <- out |>  dplyr::select(tidyselect::all_of(c("GID","GP.method","trait","yHat"))) |>
+  all.pred <- out %>%  dplyr::select(tidyselect::all_of(c("GID","GP.method","trait","yHat"))) %>%
     tidyr::pivot_wider(names_from="trait", values_from="yHat")
 
   if(!is.null(testSetGID)){
@@ -1459,9 +1456,9 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
     if(!is.null(p2f.stats)){
       ext <- tools::file_ext(p2f.pred)
       if(ext %in% c("csv")){
-        write.csv(all.pred, file=p2f.pred, row.names=FALSE)
+        utils::write.csv(all.pred, file=p2f.pred, row.names=FALSE)
       } else if(ext %in% c("txt","tsv")){
-        write.table(file=p2f.pred, all.pred, sep="\t", row.names=FALSE, col.names=TRUE)
+        utils::write.table(file=p2f.pred, all.pred, sep="\t", row.names=FALSE, col.names=TRUE)
       } else if(ext %in% "rds"){
         saveRDS(all.pred, file=p2f.pred)
       }
@@ -1567,7 +1564,7 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
                                  "{min}, {max}",
                                  "{N_nonmiss}"))
   ## add p-value of comparison between groups if groups provided
-  if(add.pval & !is.null(by)) gt <- gt |> gtsummary::add_p()
+  if(add.pval & !is.null(by)) gt <- gt %>% gtsummary::add_p()
 
   return(gt)
 
@@ -1688,7 +1685,7 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
   data[,vars] <- apply(data[,vars],2, as.numeric)
 
   ## set character columns to factor
-  data <- data |> dplyr::mutate(dplyr::across(dplyr::where(is.character), as.factor))
+  data <- data %>% dplyr::mutate(dplyr::across(dplyr::where(is.character), as.factor))
 
   ## if not defined, select all numeric columns
   if(is.null(vars.inc) & is.null(vars.dec)){
@@ -1697,8 +1694,8 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
   }
 
   # Create selectable table
-  dt <- data |>
-    as.data.frame() |>
+  dt <- data %>%
+    as.data.frame() %>%
     DT::datatable(data, rownames = FALSE, extensions = 'Buttons',
                   filter=list(position="top",clear=F,selection = "multiple"),
                   options = list(scrollX = TRUE,
@@ -1755,7 +1752,7 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
       output$download <- downloadHandler(
         filename = function() { "selected_ids.csv" },
         content = function(file) {
-          write.csv(data[selected_ids(), output.cols, drop = FALSE], file, row.names = FALSE)
+          utils::write.csv(data[selected_ids(), output.cols, drop = FALSE], file, row.names = FALSE)
         }
       )
     }
@@ -2221,6 +2218,14 @@ create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
 
 
 ## ----- Plot palette ----
+
+
+#' Color palette for locations
+#'
+#' @returns a vector of colors for the locations
+#'
+#' @examples
+#' palette=pal_loc()[c("GLL","MRD","LGD","CRK","CRT","PRP","FRG","BRK","STP")]
 pal_loc <- function(){
   return(c("GLL"="#AA3939",
            "MRD"="#FFA91B",
@@ -2249,6 +2254,16 @@ pal_loc <- function(){
            "MRS"="khaki4"
   ))
 }
+
+
+#' Color palette for random colors
+#'
+#' @param n number of colors to return, default is 25
+#'
+#' @returns a vector of colors
+#'
+#' @examples
+#' palette=pal_rand(n=5)
 pal_rand <- function(n=25){
   pal <-  c("#36BA55","#FAB9AC","#57D2D9","#F5586A","#F0BF41",
             "#BFC240","#3A2DE0","#6F8CA8","#8B1F1D","#DF9F58",
@@ -2257,6 +2272,13 @@ pal_rand <- function(n=25){
             "dodgerblue","ivory3","magenta","#61393C","cyan")
   return(pal[1:n])
 }
+
+#' Color palette for breeding programs
+#'
+#' @returns a vector of colors for the breeding programs
+#'
+#' @examples
+#' palette=pal_orga()[c("UMN","NDSU","SDSU","MSU","Check","Unknown")]
 pal_orga <- function(){
   return(c("UMN"="#ffcc33",#"#7A0018CE",#"#7a0019",
            "UMN_BP"="#ffcc33",
@@ -2280,6 +2302,12 @@ pal_orga <- function(){
   )
 }
 
+#' Color palette for the 21 wheat chromosomes
+#'
+#' @returns a vector of colors for the 21 wheat chromosomes
+#'
+#' @examples
+#' palette=pal_21wheatchr()
 pal_21wheatchr <- function(){
   return(c("#8B0000", "#FF4500", "#FA8072", "#27408B", "#4169E1", "#1C86EE",
            "#008B45", "#00CD66", "#00FF7F", "goldenrod4", "goldenrod2", "gold",

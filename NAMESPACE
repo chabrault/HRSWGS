@@ -1,1 +1,5 @@
 exportPattern("^[[:alpha:]]+")
+importFrom("stats", "coef", "confint", "cor", "density", "dist",
+           "filter", "lm", "median", "quantile", "setNames")
+importFrom("utils", "head", "write.csv", "write.table")
+importFrom("foreach","%dopar%")
