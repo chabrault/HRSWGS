@@ -31,15 +31,8 @@ list of 4 components:
 - entry.info: data frame of combined genotype information
 }
 \description{
-Format phenotypic data from GrainGenes (Excel tables)
-}
-\examples{
-# p2d <- here("data","URSN_tables")
-out <- format_phenot(p2d=p2d, years=year_ranges, locs=locs2check,
-                     traits=traits2check,
-                      cols2rem=c('DISK',"VRI",
-                                 "VIBE FDK *","VIBE_FDK"))
-
+Load Excel files containing phenotypic data from GrainGenes, from multiple locations and years.
+Combine them into one data frame and separate genotype information with phenotypic data.
 }
 \seealso{
 [format_names()]

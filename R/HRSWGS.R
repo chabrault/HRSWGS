@@ -49,22 +49,22 @@ setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
   } else if(scenario %in% "knLoc.nYr"){
     ## remove environments from same year
     trn <- lapply(tsn, function(x){
-      envs <- str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,2)), negate=TRUE)
+      envs <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,2)), negate=TRUE)
       return(intersect(envs, envs.train))
     })
 
   } else if(scenario %in% "nLoc.knYr"){
     ## remove environments from same location
     trn <- lapply(tsn, function(x) {
-      envs <- str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,1)), negate=TRUE)
+      envs <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,1)), negate=TRUE)
       return(intersect(envs, envs.train))
     })
 
   }else if(scenario %in% "nLoc.nYr"){
     trn <- lapply(tsn, function(x) {
       ## remove environments from same location and year
-      sub1 <- str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,1)), negate=TRUE)
-      sub1 <- str_subset(sub1, unlist(lapply(strsplit(x,"_",fixed=T),`[`,2)), negate=TRUE)
+      sub1 <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,1)), negate=TRUE)
+      sub1 <- stringr::str_subset(sub1, unlist(lapply(strsplit(x,"_",fixed=T),`[`,2)), negate=TRUE)
       return(intersect(sub1, envs.train))
     })
   }
@@ -92,7 +92,7 @@ setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
 
   ## output: subset phenotypic data for training and testing set
   if(is.null(traits)) {traits <- colnames(myPheno)[sapply(myPheno, is.numeric)]}
-  #myPheno <- myPheno %>% dplyr::select(all_of(c("env", "gid", traits)))
+  #myPheno <- myPheno %>% dplyr::select(tidyselect::all_of(c("env", "gid", traits)))
   ### for training set
   pheno.train <- purrr::map2(.x=trn, .y=genos.tsn, \(x, y){
     ## select gid for training environments
@@ -306,7 +306,7 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
                                from=df.merged$match.name,
                                to=df.merged$new.name)
   df.changes <- df.merged |> dplyr::filter(new.name != match.name) |>
-    dplyr::select(all_of(c("match.name","new.name")))
+    dplyr::select(tidyselect::all_of(c("match.name","new.name")))
 
   return(list(df.corresp=df.merged,
               df.changes=df.changes,
@@ -317,6 +317,9 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
 
 
 #' Format phenotypic data from GrainGenes (Excel tables)
+#'
+#' Load Excel files containing phenotypic data from GrainGenes, from multiple locations and years.
+#' Combine them into one data frame and separate genotype information with phenotypic data.
 #'
 #' @param p2d path to directory where tables are saved
 #' @param years numeric vector of years to look for
@@ -336,26 +339,6 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
 #' - sheet.match.info: data frame of sheet matching (finding the relevant tabs)
 #' - phenot: data frame of combined phenotypic data for all years and locations
 #' - entry.info: data frame of combined genotype information
-#'
-#' @examples
-#'# p2d <- here("data","URSN_tables")
-# year_ranges <- c(2008:2022)
-# locs_all = c("Entry","St. Paul","Crookston","Brookings","Prosper","Carrington",
-#              "Langdon","Morden","Fargo", "Glenlea")
-#
-# traits <- c("Incidence","Severity","Disease_index","VSK","Heading",
-#             "MicroTWT","DON", "30SSW","TestWeight","3ADON","FHB_19",
-#             "1000_KWT")
-# ## from the list of traits, add synonyms that could be used to improve matching
-# traits <- c(traits,"Tombstone","FDK", "FHB index","Headind_from_6_1","FHB_Index_1_9")
-# ## indicate the correspondence with trait name here
-# names(traits) <- c(traits,"VSK","VSK","Disease_index","Heading","FHB_19")
-# locs <- c(locs_all,"St Paul","Entries")
-# names(locs) <- c(locs_all,"St. Paul","Entry")
-#' out <- format_phenot(p2d=p2d, years=year_ranges, locs=locs2check,
-#'                      traits=traits2check,
-#'                       cols2rem=c('DISK',"VRI",
-#'                                  "VIBE FDK *","VIBE_FDK"))
 #'
 #' @author Charlotte Brault
 format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait=8){
@@ -481,7 +464,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         pat.orga <- "\\bMN\\b|\\bND\\b|\\bSD\\b|\\bUMN\\b|\\bSDSU\\b|\\bNDSU\\b|\\bAAFC\\b"
         # find the column number corresponding to the most matched
         idx.orga <- which.max(apply(dat, 2, function(x)
-          sum(stringr::str_detect(na.omit(x), pattern=pat.orga))))
+          sum(stringr::str_detect(stats::na.omit(x), pattern=pat.orga))))
 
         #### first year
         # define pattern to look for
@@ -494,14 +477,14 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         # define pattern to look for
         pat.sub <- "Anderson|Glover|Mergoum|Smith|Cooper"
         # find the column number corresponding to the most matched
-        app <- apply(dat, 2, function(x) sum(stringr::str_detect(na.omit(x), pattern=pat.sub)))
+        app <- apply(dat, 2, function(x) sum(stringr::str_detect(stats::na.omit(x), pattern=pat.sub)))
         idx.sub <- ifelse(max(app) < 8, NA, which.max(app))
 
         #### market class
         # define pattern to look for
         pat.class <- "HRS|HRSW|Durum|CWRS"
         # find the column number corresponding to the most matched
-        app <- apply(dat, 2, function(x) sum(stringr::str_detect(na.omit(x), pattern=pat.class)))
+        app <- apply(dat, 2, function(x) sum(stringr::str_detect(stats::na.omit(x), pattern=pat.class)))
         idx.class <- ifelse(max(app) < 8, NA, which.max(app))
 
         colOrder <- c(1:3,idx.orga)
@@ -534,7 +517,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         ## curate phenotypic data
       } else{
         ## select first column
-        tmp <- suppressWarnings(na.omit(as.numeric(dat[,1])))
+        tmp <- suppressWarnings(stats::na.omit(as.numeric(dat[,1])))
 
         ## detect first row with genotype names
         if(any(grepl("Line",dat[,1]))){
@@ -604,7 +587,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
                                  method="lcs", maxDist=distMatchTrait)
 
         ## verify no duplicated traits
-        if(length(unique(na.omit(idx))) != length(na.omit(idx))){
+        if(length(unique(stats::na.omit(idx))) != length(stats::na.omit(idx))){
           print(paste0("Problem with trait matching"))
         }
         #stopifnot(length(unique(idx)) == length(idx))
@@ -613,10 +596,10 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         ## verify the matching
         df.match <- data.frame(year=yr, location=tab,
                                initial_name=traits_tmp[which(!is.na(idx))],
-                               match=traits[na.omit(idx)],
-                               final_name=names(traits)[na.omit(idx)],
-                               match_problem=ifelse(length(unique(na.omit(idx))) !=
-                                                      length(na.omit(idx)),TRUE,FALSE))
+                               match=traits[stats::na.omit(idx)],
+                               final_name=names(traits)[stats::na.omit(idx)],
+                               match_problem=ifelse(length(unique(stats::na.omit(idx))) !=
+                                                      length(stats::na.omit(idx)),TRUE,FALSE))
         #print(df.match)
         df.match.all[[yr]][[tab]] <- as.data.frame(df.match)
         ## missing matches
@@ -1151,7 +1134,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
   for(tr in traits){
     write(paste0("Working on trait ",tr), stderr())
     ## format geno and pheno for the trait, after removing missing values
-    pheno_tr <- na.omit(pheno[,c("GID",tr)])
+    pheno_tr <- stats::na.omit(pheno[,c("GID",tr)])
     inds <- intersect(pheno_tr$GID, rownames(geno))
     pheno_tr <- pheno_tr[match(inds, pheno_tr$GID),]
     geno_tr <- geno[inds,]
@@ -1461,7 +1444,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 
   stopCluster(cl)
   ## set the predicted values in a wide format, with one column per trait
-  all.pred <- out |>  dplyr::select(all_of(c("GID","GP.method","trait","yHat"))) |>
+  all.pred <- out |>  dplyr::select(tidyselect::all_of(c("GID","GP.method","trait","yHat"))) |>
     tidyr::pivot_wider(names_from="trait", values_from="yHat")
 
   if(!is.null(testSetGID)){
@@ -1577,7 +1560,7 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 
 
   gt <- gtsummary::tbl_summary(data,
-                               include=all_of(variables),by = by,
+                               include=tidyselect::all_of(variables),by = by,
                                type = all_continuous() ~ "continuous2",
                                statistic = all_continuous() ~ c(
                                  "{mean} ({sd})",
@@ -1634,26 +1617,26 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
 
 
   ## compose the plot
-  p <- ggplot(BV, aes(x=.data[[trait]]))+
-    geom_density(color = 'skyblue') +
-    geom_area(data = subset(df.dens, x >= q15.9 & x <= q84.1), # 1 Std 68.2%
+  p <- ggplot2::ggplot(BV, aes(x=.data[[trait]]))+
+    ggplot2::geom_density(color = 'skyblue') +
+    ggplot2::geom_area(data = subset(df.dens, x >= q15.9 & x <= q84.1), # 1 Std 68.2%
               aes(x=x,y=y), fill='skyblue', alpha=0.8) +
-    geom_area(data = subset(df.dens, x >= q2.3 & x <= q97.7), # 2 Std 95.4%
+    ggplot2::geom_area(data = subset(df.dens, x >= q2.3 & x <= q97.7), # 2 Std 95.4%
               aes(x=x,y=y), fill='skyblue', alpha=0.6) +
-    geom_area(data = subset(df.dens, x >= q0.01 & x <= q99.9), # 3 Std 99.8%
+    ggplot2::geom_area(data = subset(df.dens, x >= q0.01 & x <= q99.9), # 3 Std 99.8%
               aes(x=x,y=y), fill='skyblue', alpha=0.3) +
-    geom_vline(xintercept=meanx, color="grey60", linewidth=1.5, linetype="dashed") +
-    geom_vline(xintercept=medx, color='#FFFFFF',linewidth=1.5, linetype="dashed") +
-    labs(title=trait,x=trait, y="Density") +
+    ggplot2::geom_vline(xintercept=meanx, color="grey60", linewidth=1.5, linetype="dashed") +
+    ggplot2::geom_vline(xintercept=medx, color='#FFFFFF',linewidth=1.5, linetype="dashed") +
+    ggplot2::labs(title=trait,x=trait, y="Density") +
     bigstatsr::theme_bigstatsr(size.rel=0.8)+
-    geom_rug(alpha=0.8, color="skyblue")
+    ggplot2::geom_rug(alpha=0.8, color="skyblue")
 
   if(!is.null(selGen)){
     ## subset the dataset for the selected genotypes
     dat.sel <- BV[BV[[genoCol]] %in% selGen,]
     require(ggrepel)
     require(viridis)
-    p <- p+ geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]], color=.data[[colorCol]]),
+    p <- p+ ggplot2::geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]], color=.data[[colorCol]]),
                      linewidth=1, sides="b", inherit.aes = FALSE)
 
     if(is.numeric(dat.sel[[colorCol]])){
@@ -1705,7 +1688,7 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
   data[,vars] <- apply(data[,vars],2, as.numeric)
 
   ## set character columns to factor
-  data <- data |> mutate(across(where(is.character), as.factor))
+  data <- data |> dplyr::mutate(dplyr::across(dplyr::where(is.character), as.factor))
 
   ## if not defined, select all numeric columns
   if(is.null(vars.inc) & is.null(vars.dec)){
@@ -1725,7 +1708,7 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
                                  buttons = c('copy', 'excel', 'pdf', 'print'),
 
                                  columnDefs = list(list(className = 'dt-center', targets = "_all")),
-                                 render=JS(
+                                 render=htmlwidgets::JS(
                                    "function(data, type, row, meta) {",
                                    "return type === 'display' && data.length > 10 ?",
                                    "'<span title=\"' + data + '\">' + data.substr(0, 10) + '...</span>' : data;",
@@ -1757,10 +1740,10 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
 
   ## create the shinyApp part
   shiny::shinyApp(
-    ui=fluidPage(
-      titlePanel("Filter and Select Rows in Table"),
+    ui=shiny::fluidPage(
+      shiny::titlePanel("Filter and Select Rows in Table"),
       DT::DTOutput("table"),
-      downloadButton("download", "Download Selected genotypes")
+      shiny::downloadButton("download", "Download Selected genotypes")
     ),
     server=function(input, output, session) {
       output$table <- DT::renderDT({dt} ,server = FALSE)
@@ -1830,13 +1813,13 @@ create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE
                          "variety(s)","country_of_origin(s)","notes(s)",
                          "accession_number(s)","purdy_pedigree","filial_generation")
 
-  colsGeno <- na.omit(colsFormat)
+  colsGeno <- stats::na.omit(colsFormat)
   ## verify that all column written exists in the table
   stopifnot(all(colsGeno %in% colnames(dat)))
   dat.geno <- dat[,colsGeno] %>% dplyr::distinct()
   ## change column names to what is expected in T3
-  colnames(dat.geno) <- plyr::mapvalues(colnames(dat.geno), from=na.omit(colsFormat),
-                                        to=names(na.omit(colsFormat)))
+  colnames(dat.geno) <- plyr::mapvalues(colnames(dat.geno), from=stats::na.omit(colsFormat),
+                                        to=names(stats::na.omit(colsFormat)))
 
   ## add other empty columns
   for(col in names(colsFormat)){
@@ -1863,8 +1846,8 @@ create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE
     # get the search results
     searchGeno = conn$get(paste0("search/germplasm/", id), pageSize=10000)$data
     ## check if the accessions are already in the database
-    identical(map_chr(searchGeno, "germplasmName"),
-              map_chr(searchGeno, "defaultDisplayName"))
+    identical(purrr::map_chr(searchGeno, "germplasmName"),
+              purrr::map_chr(searchGeno, "defaultDisplayName"))
     ## find the accessions that are in accession_list and not in T3
     toAdd <- setdiff(T3.accession$accession_name,purrr::map_chr(searchGeno, "germplasmName"))
     length(toAdd) ## number of accessions to add
@@ -1989,15 +1972,15 @@ create_trials <- function(dat=NULL,
                          "plot_width", "plot_length", "field_size",
                          "seedlot_name","num_seed_per_plot",
                          "weight_gram_seed_per_plot","is_private")
-  colsTrial <- na.omit(colsFormat)
+  colsTrial <- stats::na.omit(colsFormat)
 
   stopifnot(all(colsTrial %in% colnames(dat)))
   dat.trial <- dat %>%
-    dplyr::select(all_of(c(keepID,colsTrial))) %>%
+    dplyr::select(tidyselect::all_of(c(keepID,colsTrial))) %>%
     dplyr::distinct()
 
-  colnames(dat.trial) <- plyr::mapvalues(colnames(dat.trial), from=na.omit(colsFormat),
-                                         to=names(na.omit(colsFormat)), warn_missing = FALSE)
+  colnames(dat.trial) <- plyr::mapvalues(colnames(dat.trial), from=stats::na.omit(colsFormat),
+                                         to=names(stats::na.omit(colsFormat)), warn_missing = FALSE)
 
 
   ## define a unique id for trial name: paste location and year
@@ -2074,13 +2057,14 @@ create_trials <- function(dat=NULL,
     df.T3.trial <- data.frame(trialName=purrr::map_chr(list_flatten(resp$data),"studyName"),
                               trialId=purrr::map_chr(list_flatten(resp$data),"studyDbId"),
                               locName=purrr::map_chr(list_flatten(resp$data),"locationName"),
-                              year=unlist(list_flatten(map(list_flatten(resp$data),"seasons"))))
+                              year=unlist(purrr::list_flatten(
+                                purrr::map(purrr::list_flatten(resp$data),"seasons"))))
     # plantDate=purrr::map_chr(list_flatten(resp$data),"startDate"))
 
     dat.trial <- dat.trial[!dat.trial$trial_name %in% df.T3.trial$trialName,]
 
     ## remove the name of state or country
-    df.T3.trial$locName2 <- str_remove(string = df.T3.trial$locName, pattern="(, [a-zA-Z]+)+$")
+    df.T3.trial$locName2 <- stringr::str_remove(string = df.T3.trial$locName, pattern="(, [a-zA-Z]+)+$")
     ## check if there is already trials for the specific year and location that has not been removed
     idx <- which(dat.trial$location %in% df.T3.trial$locName2 &
                    dat.trial$year %in% df.T3.trial$year)
@@ -2189,7 +2173,7 @@ create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
   require(dplyr)
   require(purrr)
 
-  df_corresp_trait <- na.omit(df_corresp_trait)
+  df_corresp_trait <- stats::na.omit(df_corresp_trait)
 
   ## Verifications
   stopifnot(!is.null(df_corresp_trait), !is.null(p2f) |!return_table,
@@ -2199,7 +2183,7 @@ create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
 
   ## select ID column and traits that are in the correspondence table
   T3.phenot <- dat %>%
-    dplyr::select(all_of(c(plot_name_col,
+    dplyr::select(tidyselect::all_of(c(plot_name_col,
                            intersect(df_corresp_trait$corresp_col, colnames(dat))))) %>%
     dplyr::distinct()
   ## set column names to what is expected in T3
