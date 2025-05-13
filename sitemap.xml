@@ -3,9 +3,13 @@
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
 <url><loc>/reference/GGAIN.html</loc></url>
+<url><loc>/reference/SelectFromTable.html</loc></url>
 <url><loc>/reference/compute_GP_allGeno.html</loc></url>
 <url><loc>/reference/compute_GP_methods.html</loc></url>
 <url><loc>/reference/concordance_match_name.html</loc></url>
+<url><loc>/reference/create_accessions.html</loc></url>
+<url><loc>/reference/create_phenot.html</loc></url>
+<url><loc>/reference/create_trials.html</loc></url>
 <url><loc>/reference/data_summary.html</loc></url>
 <url><loc>/reference/format_curate_vcf.html</loc></url>
 <url><loc>/reference/format_names.html</loc></url>
