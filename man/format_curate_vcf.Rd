@@ -70,6 +70,9 @@ data frame with 0/1/2 values from the curated vcf file, with genotypes in row an
 \description{
 Format and curate vcf file
 }
+\seealso{
+[format_names()]
+}
 \author{
 Charlotte Brault
 }

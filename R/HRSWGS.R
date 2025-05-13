@@ -329,6 +329,8 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
 #' @param distMatchTrait numeric value, distance for string matching. Default is 8.
 #' Increased distance would lead to more matching and is more prone to errors.
 #'
+#' @seealso [format_names()]
+#'
 #' @return list of 4 components:
 #' - var.match.info: data frame of variable matching
 #' - sheet.match.info: data frame of sheet matching (finding the relevant tabs)
@@ -479,7 +481,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         pat.orga <- "\\bMN\\b|\\bND\\b|\\bSD\\b|\\bUMN\\b|\\bSDSU\\b|\\bNDSU\\b|\\bAAFC\\b"
         # find the column number corresponding to the most matched
         idx.orga <- which.max(apply(dat, 2, function(x)
-          sum(str_detect(na.omit(x), pattern=pat.orga))))
+          sum(stringr::str_detect(na.omit(x), pattern=pat.orga))))
 
         #### first year
         # define pattern to look for
@@ -492,14 +494,14 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         # define pattern to look for
         pat.sub <- "Anderson|Glover|Mergoum|Smith|Cooper"
         # find the column number corresponding to the most matched
-        app <- apply(dat, 2, function(x) sum(str_detect(na.omit(x), pattern=pat.sub)))
+        app <- apply(dat, 2, function(x) sum(stringr::str_detect(na.omit(x), pattern=pat.sub)))
         idx.sub <- ifelse(max(app) < 8, NA, which.max(app))
 
         #### market class
         # define pattern to look for
         pat.class <- "HRS|HRSW|Durum|CWRS"
         # find the column number corresponding to the most matched
-        app <- apply(dat, 2, function(x) sum(str_detect(na.omit(x), pattern=pat.class)))
+        app <- apply(dat, 2, function(x) sum(stringr::str_detect(na.omit(x), pattern=pat.class)))
         idx.class <- ifelse(max(app) < 8, NA, which.max(app))
 
         colOrder <- c(1:3,idx.orga)
@@ -538,10 +540,10 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         if(any(grepl("Line",dat[,1]))){
           ### clean column names
           colN <- which(dat[,1] == "Line")
-          colnames(dat) <- str_remove(paste0(colnames(dat),dat[colN,]),"NA")
-          colnames(dat) <- str_remove(colnames(dat),"ppm|g")
-          colnames(dat) <- make_clean_names(colnames(dat),case="none",
-                                            replace=c("%"=""))
+          colnames(dat) <- stringr::str_remove(paste0(colnames(dat),dat[colN,]),"NA")
+          colnames(dat) <- stringr::str_remove(colnames(dat),"ppm|g")
+          colnames(dat) <- janitor::make_clean_names(colnames(dat),case="none",
+                                                     replace=c("%"=""))
           dat <- dat[(colN+1):nrow(dat),]
 
           ## case when first column is composed of entry number
@@ -554,10 +556,10 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
           if(!"Line" %in% colnames(dat)){
             #print(paste0("No column names with Line for tab ",tab," for year ",yr))
             colN <- which(dat[,1] == "Line")
-            colnames(dat) <- str_remove(paste0(colnames(dat),dat[colN,]),"NA")
-            colnames(dat) <- str_remove(colnames(dat),"ppm|g")
-            colnames(dat) <- make_clean_names(colnames(dat),case="none",
-                                              replace=c("%"=""))
+            colnames(dat) <- stringr::str_remove(paste0(colnames(dat),dat[colN,]),"NA")
+            colnames(dat) <- stringr::str_remove(colnames(dat),"ppm|g")
+            colnames(dat) <- janitor::make_clean_names(colnames(dat),case="none",
+                                                       replace=c("%"=""))
             dat <- dat[(colN+1):nrow(dat),]
           }
 
@@ -583,9 +585,9 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         ## set as numeric trait columns
         dat = suppressWarnings(dat %>%
                                  ## first 3 columns should be year,loc, entry
-                                 mutate_at(c(1:3), as.factor) %>%
-                                 mutate_at(c(4:ncol(dat)), as.numeric))
-        dat <- remove_empty(dat, which="cols")
+                                 dplyr::mutate_at(c(1:3), as.factor) %>%
+                                 dplyr::mutate_at(c(4:ncol(dat)), as.numeric))
+        dat <- janitor::remove_empty(dat, which="cols")
         ### print(head(dat))
         ### print(dim(dat))
         ## remove traits with bad matching
@@ -597,8 +599,8 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         traits_tmp = colnames(dat)[4:ncol(dat)]
 
         ## amatch is a function from stringdist package to find the closest match
-        idx = stringdist::amatch(x=make_clean_names(traits_tmp,use_make_names = FALSE),
-                                 table=make_clean_names(traits),
+        idx = stringdist::amatch(x=janitor::make_clean_names(traits_tmp,use_make_names = FALSE),
+                                 table=janitor::make_clean_names(traits),
                                  method="lcs", maxDist=distMatchTrait)
 
         ## verify no duplicated traits
@@ -692,6 +694,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
 #'
 #' @return data frame with 0/1/2 values from the curated vcf file, with genotypes in row and markers in columns.
 #' @author Charlotte Brault
+#' @seealso [format_names()]
 format_curate_vcf <- function(vcf.p2f=NULL,
                               matrix.gt=NULL,
                               mrk.info=NULL,
@@ -1030,7 +1033,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     mrk.info.imp <- tibble::as_tibble(vcfR::getFIX(vcf.imp))
     vcf.file <- cbind(mrk.info.imp[,c("CHROM","POS")],gt.imp)
     vcf.file$POS <- as.numeric(vcf.file$POS)
-    vcf.file <- arrange(vcf.file, CHROM,POS)
+    vcf.file <- dplyr::arrange(vcf.file, CHROM,POS)
     rownames(vcf.file) <- paste0(vcf.file$CHROM, "_",vcf.file$POS)
     cols2rem <- c("CHROM","POS")
     vcf.file[,cols2rem]<- NULL
@@ -1406,18 +1409,18 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
     require(rrBLUP)
     ## parallel computation of GP for rrBLUP
     out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
-                   .combine = "rbind",.packages = "rrBLUP") %dopar% {
-                     ## estimate marker effects on all available data
-                     yNA <- merge(data.frame(GID=c(rownames(geno))),
-                                  pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
-                     yGID <- yNA$GID
-                     fit <- rrBLUP::kinship.BLUP(y=yNA[[traits[f]]],
-                                                 G.train=geno,
-                                                 G.pred=geno, K.method="RR")$g.pred
-                     ## output predicted values
-                     tmp <- data.frame(GID=yGID, GP.method=GP.method,trait=traits[f],yHat=fit)
-                     return(tmp)
-                   }
+                            .combine = "rbind",.packages = "rrBLUP") %dopar% {
+                              ## estimate marker effects on all available data
+                              yNA <- merge(data.frame(GID=c(rownames(geno))),
+                                           pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
+                              yGID <- yNA$GID
+                              fit <- rrBLUP::kinship.BLUP(y=yNA[[traits[f]]],
+                                                          G.train=geno,
+                                                          G.pred=geno, K.method="RR")$g.pred
+                              ## output predicted values
+                              tmp <- data.frame(GID=yGID, GP.method=GP.method,trait=traits[f],yHat=fit)
+                              return(tmp)
+                            }
   } else if(GP.method == "RKHS"){
     require(BGLR)
     D <- as.matrix(dist(geno,method="euclidean"))^2
@@ -1428,17 +1431,17 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 
     ## parallel processing over traits
     out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
-                   .combine = "rbind",.packages = "BGLR") %dopar% {
-                     yNA <- merge(data.frame(GID=c(rownames(geno))),
-                                  pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
-                     p2f.temp <- paste0(p2d.temp,"/RKHS_PredAll_testSet_",f)
-                     ## fit model
-                     fit <- BGLR::BGLR(y=yNA[[traits[f]]],ETA=list(list(K=K,model='RKHS')),
-                                       nIter=nIter,burnIn=burnIn,saveAt=p2f.temp,verbose=FALSE)
-                     ## output predicted values
-                     tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,trait=traits[f],yHat=fit$yHat)
-                     return(tmp)
-                   }
+                            .combine = "rbind",.packages = "BGLR") %dopar% {
+                              yNA <- merge(data.frame(GID=c(rownames(geno))),
+                                           pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
+                              p2f.temp <- paste0(p2d.temp,"/RKHS_PredAll_testSet_",f)
+                              ## fit model
+                              fit <- BGLR::BGLR(y=yNA[[traits[f]]],ETA=list(list(K=K,model='RKHS')),
+                                                nIter=nIter,burnIn=burnIn,saveAt=p2f.temp,verbose=FALSE)
+                              ## output predicted values
+                              tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,trait=traits[f],yHat=fit$yHat)
+                              return(tmp)
+                            }
 
   } else if(GP.method %in% c("BayesA","BayesB")){
     ## parallel processing over traits
@@ -1969,7 +1972,7 @@ create_trials <- function(dat=NULL,
                   "Watertown","Redfield"),
            "MB, Canada"=c("Morden","Glenlea", "Winnipeg"),
            "NE"=c("Sidney_NE","Mead")
-           )
+      )
   }
 
 

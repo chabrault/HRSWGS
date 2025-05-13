@@ -7,3 +7,4 @@ notebook*
 ^docs$
 ^pkgdown$
 ^\.github$
+^LICENSE\.md$

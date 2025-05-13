@@ -41,6 +41,9 @@ out <- format_phenot(p2d=p2d, years=year_ranges, locs=locs2check,
                                  "VIBE FDK *","VIBE_FDK"))
 
 }
+\seealso{
+[format_names()]
+}
 \author{
 Charlotte Brault
 }
