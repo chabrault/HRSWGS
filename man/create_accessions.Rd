@@ -59,3 +59,6 @@ a data frame with the accessions to add to T3 if return_table is TRUE, otherwise
 \description{
 Create table and file to add accession to T3
 }
+\author{
+Charlotte Brault
+}

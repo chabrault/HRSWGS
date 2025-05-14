@@ -31,7 +31,7 @@ setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
   ## if list of genotypes is provided, restrict the training and testing sets to that list
   if(!is.null(genos)){
     cmon.geno <- intersect(genos, unique(as.character(myPheno$gid)))
-    myPheno <- filter(myPheno, gid %in% cmon.geno) %>% droplevels()
+    myPheno <- dplyr::filter(myPheno, gid %in% cmon.geno) %>% droplevels()
   }
 
   ## 1. determine environments in training and testing sets for all scenarios
@@ -397,7 +397,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
       print("Need to associate each table with location")
       sheets2locs <- c() ; sheets2keep <- c()
       for(sh in sheets){
-        suppressMessages(tmp <- read_excel(path=list.files2[yr], sheet=sh))
+        suppressMessages(tmp <- readxl::read_excel(path=list.files2[yr], sheet=sh))
         ## check if a location name is present in the first row
         detect <- stringr::str_detect(string=colnames(tmp)[1],pattern=locs)
         ## second test to detect tables for MAS, summaries (to exclude)
@@ -434,7 +434,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
 
     ## Load all selected sheets in one element per year and location
     suppressMessages(load.all <- lapply(sheets2keep, function(x)
-      read_excel(path=list.files2[yr], sheet=x, skip=2, na="-")))
+      readxl::read_excel(path=list.files2[yr], sheet=x, skip=2, na="-")))
     load.yrs[[yr]] <- load.all
 
 
@@ -563,7 +563,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         ## add year and location information
         dat$Year <- as.character(yr)
         dat$Location <- as.character(tab)
-        dat <- dat %>% relocate(c("Year","Location"))
+        dat <- dat %>% dplyr::relocate(c("Year","Location"))
 
         ## set as numeric trait columns
         dat = suppressWarnings(dat %>%
@@ -628,7 +628,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
         sd <- setdiff(as.character(dat$line),  entry.list[[yr]]$Line)
         if(length(sd) > 0){
           print("New genotypes added to the entry list")
-          entry.list[[yr]] <- bind_rows(entry.list[[yr]],Line=sd)
+          entry.list[[yr]] <- dplyr::bind_rows(entry.list[[yr]],Line=sd)
         }
 
         ## check trait boundaries?
@@ -725,7 +725,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     gt <- vcfR::extract.gt(vcf, element = "GT", as.numeric=F, IDtoRowNames = TRUE)
     mrk.info <- tibble::as_tibble(vcfR::getFIX(vcf))
     mrk.info$POS <- as.numeric(mrk.info$POS)
-    mrk.info <- arrange(mrk.info, CHROM,POS)
+    mrk.info <- dplyr::arrange(mrk.info, CHROM,POS)
     ## combine marker information with genotype
     vcf.file <- cbind(mrk.info[,c("CHROM","POS")],gt[mrk.info$ID,])
     vcf.file$POS <- as.numeric(vcf.file$POS)
@@ -915,7 +915,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     }
 
     ## recreate vcfR object
-    vcf2exp <- new(Class = "vcfR")
+    vcf2exp <- methods::new(Class = "vcfR")
     ### meta element
     vcf2exp@meta <- c("##fileformat=VCFv4.2",
                       "##reference=CSv2",
@@ -1105,12 +1105,26 @@ getGenoTas_to_DF <- function(tasGeno){
 #' @param nIter number of iterations for RKHS, default is 6000
 #' @param burnIn number of burn-in iterations for RKHS, default is 1000
 #' @param ntree number of trees for RandomForest, default is 100
+#' @param nb.mtry number of mtry for RandomForest, default is 10
 #' @param p2d.temp path to directory to export temporary genomic prediction results, default is NULL (could cause error in parallelization if NULL).
 #' @param nb.cores number of cores to parallelize the computation, default is 1 (no parallelization)
 #' @param p2f.stats path to file to export genomic prediction results, default is NULL
 #'
 #' @return a list with the following elements: `obspred` with observed vs. predicted genotypic values, and `gp.stats` with genomic prediction statistics
 #' @author Charlotte Brault
+#' @seealso [getFolds()]
+#' @importFrom BGLR BGLR
+#' @importFrom parallel makeCluster
+#' @importFrom doSNOW registerDoSNOW
+#' @importFrom foreach foreach %dopar%
+#' @importFrom rrBLUP kinship.BLUP
+#' @importFrom caret train predict.train
+#' @importFrom randomForest randomForest
+#' @importFrom dplyr bind_rows
+#' @importFrom stats na.omit cor
+#' @importFrom utils write.csv write.table
+#' @importFrom glmnet cv.glmnet
+#' @importFrom purrr map_dfr
 compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                                nfolds=10, h=1, nb.mtry=10, nIter=6000,burnIn=1000,
                                ntree=100,p2d.temp=NULL,
@@ -1146,7 +1160,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
     ## create cluster
-    requireNamespace(doSNOW); requireNameSpace(foreach)
     cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
     doSNOW::registerDoSNOW(cl)
 
@@ -1318,7 +1331,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 #' @param traits character vector of trait names, must correspond to `pheno` column names
 #' @param GP.method character vector of genomic prediction methods to use, must be one of "rrBLUP", "RKHS", "BayesA", "BayesB"
 #' @param runCV logical, if TRUE, run cross-validation on the common genotypes in `pheno` and `geno`, default is FALSE
-#' @param testSetID GID of the test set genotypes, if NULL, will provide predicted genotypic values for all genotypes in `geno`
+#' @param testSetGID GID of the test set genotypes, if NULL, will provide predicted genotypic values for all genotypes in `geno`
 #' @param nreps number of repetitions for cross-validation, default is 10
 #' @param nfolds number of folds for cross-validation, default is 10
 #' @param h bandwith parameter for RKHS, default is 1.
@@ -1335,7 +1348,10 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 #' @return a data frame with the predicted values for all genotypes and traits
 #' @seealso [compute_GP_methods()]
 #' @author Charlotte Brault
-#'
+#' @importFrom doSNOW registerDoSNOW
+#' @importFrom foreach %dopar% foreach
+#' @importFrom rrBLUP kinship.BLUP
+#' @importFrom tidyr pivot_wider
 compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                                runCV=FALSE, testSetGID=NULL,
                                nreps=10,nfolds=10, h=1, nb.mtry=10,
@@ -1380,13 +1396,11 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 
 
   ## create cluster
-  requireNamespace(doSNOW); requireNamespace(foreach)
   cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
   doSNOW::registerDoSNOW(cl)
   ## run genomic prediction on all genotypes
 
   if(GP.method %in% "rrBLUP"){
-    require(rrBLUP)
     ## parallel computation of GP for rrBLUP
     out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
                             .combine = "rbind",.packages = "rrBLUP") %dopar% {
@@ -1546,6 +1560,7 @@ print_table <- function(table, rownames = FALSE, digits = 3, ...){
 #'
 #' @returns a gtsummary object
 #' @author Charlotte Brault
+#' @importFrom gtsummary tbl_summary add_p
 data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
   require(gtsummary)
 
@@ -1581,6 +1596,7 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 #' @param selGen character vector of selected genotypes to highlight in the plot
 #' @param colorCol character vector of column name for color (default is NULL)
 #'
+#' @importFrom ggplot2 aes geom_density geom_area geom_vline labs ggplot
 #' @returns a ggplot object
 #'
 plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=NULL){
@@ -1631,8 +1647,6 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
   if(!is.null(selGen)){
     ## subset the dataset for the selected genotypes
     dat.sel <- BV[BV[[genoCol]] %in% selGen,]
-    require(ggrepel)
-    require(viridis)
     p <- p+ ggplot2::geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]], color=.data[[colorCol]]),
                      linewidth=1, sides="b", inherit.aes = FALSE)
 
@@ -1673,10 +1687,10 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
 #' @param output.cols character vector of variable names to include in the output file, if not provided, all columns will be included
 #'
 #' @returns a shiny app with a table and a download button
-#'
+#' @author Charlotte Brault
+#' @importFrom shiny shinyApp fluidPage titlePanel downloadButton reactive
+#' @importFrom DT datatable formatSignif formatStyle styleInterval DTOutput renderDT
 SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL){
-  require(shiny)
-  require(DT)
   num_cols <- c(as.numeric(which(sapply(data, class) == "numeric")))
 
   if(is.null(output.cols)) output.cols <- colnames(data)
@@ -1782,7 +1796,8 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
 #' @param species_name character string, name of the species, default is "Triticum aestivum" (fixed).
 #'
 #' @return a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
-
+#' @author Charlotte Brault
+#' @importFrom dplyr distinct relocate
 create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE,
                               accession_name=NULL, population_name=NULL,
                               `organization_name(s)`=NULL, `synonym(s)`=NULL,
@@ -1831,7 +1846,6 @@ create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE
 
   ## check and subset to accessions that are not in the database
   if(checkDB){
-    require(BrAPI)
     print("Check if accessions are already in the database")
     conn <- BrAPI::getBrAPIConnection("T3/Wheat")
 
@@ -1903,7 +1917,8 @@ create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE
 #'
 #' @return a data frame with the trials to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
 #' @seealso [create_accessions(), create_phenot()]
-
+#' @author Charlotte Brault
+#' @importFrom dplyr distinct relocate
 create_trials <- function(dat=NULL,
                           checkDB=TRUE,
                           p2f=NULL,
@@ -2163,6 +2178,9 @@ create_trials <- function(dat=NULL,
 #' @param plot_name_col character string, name of the column in `dat` that contains the plot name, default is "plot_name"
 #'
 #' @return a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`.
+#' @importFrom stats na.omit
+#' @importFrom openxlsx write.xlsx
+#' @importFrom dplyr select distinct
 
 create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
                           return_table=TRUE, plot_name_col=NULL){

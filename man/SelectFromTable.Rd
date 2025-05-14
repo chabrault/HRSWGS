@@ -21,3 +21,6 @@ a shiny app with a table and a download button
 \description{
 Interactively select rows from a table with filters and download
 }
+\author{
+Charlotte Brault
+}

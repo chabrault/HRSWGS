@@ -36,6 +36,8 @@ compute_GP_allGeno(
 
 \item{runCV}{logical, if TRUE, run cross-validation on the common genotypes in `pheno` and `geno`, default is FALSE}
 
+\item{testSetGID}{GID of the test set genotypes, if NULL, will provide predicted genotypic values for all genotypes in `geno`}
+
 \item{nreps}{number of repetitions for cross-validation, default is 10}
 
 \item{nfolds}{number of folds for cross-validation, default is 10}
@@ -59,8 +61,6 @@ compute_GP_allGeno(
 \item{p2f.pred}{path to file to export genotypic values from genomic prediction, default is NULL}
 
 \item{verbose}{integer, level of verbosity, default is 1}
-
-\item{testSetID}{GID of the test set genotypes, if NULL, will provide predicted genotypic values for all genotypes in `geno`}
 }
 \value{
 a data frame with the predicted values for all genotypes and traits

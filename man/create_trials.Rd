@@ -108,3 +108,6 @@ Create table and file to add trials to T3
 \seealso{
 [create_accessions(), create_phenot()]
 }
+\author{
+Charlotte Brault
+}

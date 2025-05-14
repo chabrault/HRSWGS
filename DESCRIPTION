@@ -11,7 +11,7 @@ Authors@R: c(
   )
 Description: Custom function to help data wrangling and formatting
     for using genomic selection in hard red spring wheat breeding programs
-License: MIT + file LICENSE
+License: CC BY 4.0
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2

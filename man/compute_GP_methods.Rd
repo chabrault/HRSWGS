@@ -36,6 +36,8 @@ compute_GP_methods(
 
 \item{h}{bandwith parameter for RKHS, default is 1. If multiple values are provided, method will be RKHS Kernel Averaging.}
 
+\item{nb.mtry}{number of mtry for RandomForest, default is 10}
+
 \item{nIter}{number of iterations for RKHS, default is 6000}
 
 \item{burnIn}{number of burn-in iterations for RKHS, default is 1000}
@@ -53,6 +55,9 @@ a list with the following elements: `obspred` with observed vs. predicted genoty
 }
 \description{
 Compute genomic prediction different methods
+}
+\seealso{
+[getFolds()]
 }
 \author{
 Charlotte Brault
