@@ -30,13 +30,13 @@ compute_GP_allGeno(
 
 \item{pheno}{phenotypic data with genotypes in row (in GID column) and traits in columns}
 
-\item{traits}{character vector of trait names, must correspond to `pheno` column names}
+\item{traits}{character vector of trait names, must correspond to \code{pheno} column names}
 
 \item{GP.method}{character vector of genomic prediction methods to use, must be one of "rrBLUP", "RKHS", "BayesA", "BayesB"}
 
-\item{runCV}{logical, if TRUE, run cross-validation on the common genotypes in `pheno` and `geno`, default is FALSE}
+\item{runCV}{logical, if TRUE, run cross-validation on the common genotypes in \code{pheno} and \code{geno}, default is FALSE}
 
-\item{testSetGID}{GID of the test set genotypes, if NULL, will provide predicted genotypic values for all genotypes in `geno`}
+\item{testSetGID}{GID of the test set genotypes, if NULL, will provide predicted genotypic values for all genotypes in \code{geno}}
 
 \item{nreps}{number of repetitions for cross-validation, default is 10}
 
@@ -69,7 +69,7 @@ a data frame with the predicted values for all genotypes and traits
 Run genomic prediction on all genotypes, output predicted values
 }
 \seealso{
-[compute_GP_methods()]
+\code{\link[=compute_GP_methods]{compute_GP_methods()}}
 }
 \author{
 Charlotte Brault

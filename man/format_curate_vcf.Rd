@@ -32,7 +32,7 @@ format_curate_vcf(
 
 \item{matrix.gt}{matrix of genotypes, must contains CHROM and POS columns, default is NULL}
 
-\item{mrk.info}{data frame with marker information pulled from the vcf, with columns CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, FORMAT, default is NULL. Needed if `vcf.p2f` is not provided and `p2f.export.vcf` is not null.}
+\item{mrk.info}{data frame with marker information pulled from the vcf, with columns CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, FORMAT, default is NULL. Needed if \code{vcf.p2f} is not provided and \code{p2f.export.vcf} is not null.}
 
 \item{corresp.geno.name}{table of correspondence between genotype names, with the first column being the name to be matched and the second one being the updated name.}
 
@@ -71,7 +71,7 @@ data frame with 0/1/2 values from the curated vcf file, with genotypes in row an
 Format and curate vcf file
 }
 \seealso{
-[format_names()]
+\code{\link[=format_names]{format_names()}}
 }
 \author{
 Charlotte Brault

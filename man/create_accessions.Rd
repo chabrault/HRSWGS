@@ -25,36 +25,36 @@ create_accessions(
 \arguments{
 \item{dat}{data frame with genotype information}
 
-\item{checkDB}{logical, whether to check the T3 database with `BrAPI` package to exclude accessions already in the database, default is TRUE.}
+\item{checkDB}{logical, whether to check the T3 database with \code{BrAPI} package to exclude accessions already in the database, default is TRUE.}
 
 \item{p2f}{path to file to write the output of the function}
 
 \item{return_table}{logical, whether to return the table or not, default is TRUE.}
 
-\item{accession_name}{character string, name of the column in `dat` that contains the accession name}
+\item{accession_name}{character string, name of the column in \code{dat} that contains the accession name}
 
-\item{population_name}{character string, name of the column in `dat` that contains the population name}
+\item{population_name}{character string, name of the column in \code{dat} that contains the population name}
 
-\item{purdy_pedigree}{character string, name of the column in `dat` that contains the purdy pedigree}
+\item{purdy_pedigree}{character string, name of the column in \code{dat} that contains the purdy pedigree}
 
-\item{filial_generation}{character string, name of the column in `dat` that contains the filial generation}
+\item{filial_generation}{character string, name of the column in \code{dat} that contains the filial generation}
 
 \item{species_name}{character string, name of the species, default is "Triticum aestivum" (fixed).}
 
-\item{`organization_name(s)`}{charac6er string, name of the column in `dat` that contains the organization name}
+\item{`organization_name(s)`}{charac6er string, name of the column in \code{dat} that contains the organization name}
 
-\item{`synonym(s)`}{character string, name of the column in `dat` that contains the synonym name}
+\item{`synonym(s)`}{character string, name of the column in \code{dat} that contains the synonym name}
 
-\item{`variety(s)`}{character string, name of the column in `dat` that contains the variety name}
+\item{`variety(s)`}{character string, name of the column in \code{dat} that contains the variety name}
 
-\item{`country_of_origin(s)`}{character string, name of the column in `dat` that contains the country of origin}
+\item{`country_of_origin(s)`}{character string, name of the column in \code{dat} that contains the country of origin}
 
-\item{`notes(s)`}{character string, name of the column in `dat` that contains the notes}
+\item{`notes(s)`}{character string, name of the column in \code{dat} that contains the notes}
 
-\item{`accession_number(s)`}{character string, name of the column in `dat` that contains the accession number}
+\item{`accession_number(s)`}{character string, name of the column in \code{dat} that contains the accession number}
 }
 \value{
-a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
+a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path \code{p2f}
 }
 \description{
 Create table and file to add accession to T3

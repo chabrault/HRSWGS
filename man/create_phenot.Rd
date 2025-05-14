@@ -15,16 +15,16 @@ create_phenot(
 \arguments{
 \item{dat}{data frame with phenotypic data, containing at least the plot name and the traits}
 
-\item{df_corresp_trait}{data frame with the correspondence between the column names in `dat` and the traits in T3, must countain the columns `T3_trait` and `corresp_col`.}
+\item{df_corresp_trait}{data frame with the correspondence between the column names in \code{dat} and the traits in T3, must countain the columns \code{T3_trait} and \code{corresp_col}.}
 
 \item{p2f}{path to file to write the output of the function}
 
 \item{return_table}{logical, whether to return the table or not, default is TRUE.}
 
-\item{plot_name_col}{character string, name of the column in `dat` that contains the plot name, default is "plot_name"}
+\item{plot_name_col}{character string, name of the column in \code{dat} that contains the plot name, default is "plot_name"}
 }
 \value{
-a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`.
+a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise a file is written to the path \code{p2f}.
 }
 \description{
 Create table and file to add phenotypes in T3

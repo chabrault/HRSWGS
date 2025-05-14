@@ -51,13 +51,13 @@ compute_GP_methods(
 \item{p2f.stats}{path to file to export genomic prediction results, default is NULL}
 }
 \value{
-a list with the following elements: `obspred` with observed vs. predicted genotypic values, and `gp.stats` with genomic prediction statistics
+a list with the following elements: \code{obspred} with observed vs. predicted genotypic values, and \code{gp.stats} with genomic prediction statistics
 }
 \description{
 Compute genomic prediction different methods
 }
 \seealso{
-[getFolds()]
+\code{\link[=getFolds]{getFolds()}}
 }
 \author{
 Charlotte Brault

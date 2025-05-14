@@ -25,17 +25,19 @@ Increased distance would lead to more matching and is more prone to errors.}
 }
 \value{
 list of 4 components:
-- var.match.info: data frame of variable matching
-- sheet.match.info: data frame of sheet matching (finding the relevant tabs)
-- phenot: data frame of combined phenotypic data for all years and locations
-- entry.info: data frame of combined genotype information
+\itemize{
+\item var.match.info: data frame of variable matching
+\item sheet.match.info: data frame of sheet matching (finding the relevant tabs)
+\item phenot: data frame of combined phenotypic data for all years and locations
+\item entry.info: data frame of combined genotype information
+}
 }
 \description{
 Load Excel files containing phenotypic data from GrainGenes, from multiple locations and years.
 Combine them into one data frame and separate genotype information with phenotypic data.
 }
 \seealso{
-[format_names()]
+\code{\link[=format_names]{format_names()}}
 }
 \author{
 Charlotte Brault

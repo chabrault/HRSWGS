@@ -30,3 +30,4 @@ Imports:
       foreach,
       doParallel,
       magrittr
+Roxygen: list(markdown = TRUE)

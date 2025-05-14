@@ -41,7 +41,7 @@ create_trials(
 \arguments{
 \item{dat}{data frame with trial information}
 
-\item{checkDB}{logical, whether to check the T3 database with `BrAPI` package to exclude trials already in the database, default is TRUE.}
+\item{checkDB}{logical, whether to check the T3 database with \code{BrAPI} package to exclude trials already in the database, default is TRUE.}
 
 \item{p2f}{path to file (with xlsx extension) to write the output of the function}
 
@@ -49,64 +49,64 @@ create_trials(
 
 \item{keepID}{character string, ID column to keep in the table (returned not exported)}
 
-\item{year}{character string, name of the column in `dat` that contains the year, mandatory.}
+\item{year}{character string, name of the column in \code{dat} that contains the year, mandatory.}
 
-\item{location}{character string, name of the column in `dat` that contains the location, mandatory.}
+\item{location}{character string, name of the column in \code{dat} that contains the location, mandatory.}
 
-\item{accession_name}{character string, name of the column in `dat` that contains the accession name, mandatory.}
+\item{accession_name}{character string, name of the column in \code{dat} that contains the accession name, mandatory.}
 
-\item{transplanting_date}{character string, name of the column in `dat` that contains the transplanting date.}
+\item{transplanting_date}{character string, name of the column in \code{dat} that contains the transplanting date.}
 
-\item{plot_number}{character string, name of the column in `dat` that contains the plot number. If not present, increasing number from 1000.}
+\item{plot_number}{character string, name of the column in \code{dat} that contains the plot number. If not present, increasing number from 1000.}
 
-\item{planting_date}{character string, name of the column in `dat` that contains the planting date.}
+\item{planting_date}{character string, name of the column in \code{dat} that contains the planting date.}
 
-\item{harvest_date}{character string, name of the column in `dat` that contains the harvest date.}
+\item{harvest_date}{character string, name of the column in \code{dat} that contains the harvest date.}
 
-\item{block_number}{character string, name of the column in `dat` that contains the block number, if not present, filled with 1.}
+\item{block_number}{character string, name of the column in \code{dat} that contains the block number, if not present, filled with 1.}
 
-\item{is_a_control}{character string, name of the column in `dat` that contains the control status, filled with 0/1.}
+\item{is_a_control}{character string, name of the column in \code{dat} that contains the control status, filled with 0/1.}
 
-\item{rep_number}{character string, name of the column in `dat` that contains the rep number, if not present, filled with 1.}
+\item{rep_number}{character string, name of the column in \code{dat} that contains the rep number, if not present, filled with 1.}
 
-\item{range_number}{character string, name of the column in `dat` that contains the range number.}
+\item{range_number}{character string, name of the column in \code{dat} that contains the range number.}
 
-\item{row_number}{character string, name of the column in `dat` that contains the row number.}
+\item{row_number}{character string, name of the column in \code{dat} that contains the row number.}
 
-\item{col_number}{character string, name of the column in `dat` that contains the column number.}
+\item{col_number}{character string, name of the column in \code{dat} that contains the column number.}
 
-\item{plot_width}{character string, name of the column in `dat` that contains the plot width in meters.}
+\item{plot_width}{character string, name of the column in \code{dat} that contains the plot width in meters.}
 
-\item{plot_length}{character string, name of the column in `dat` that contains the plot length in meters.}
+\item{plot_length}{character string, name of the column in \code{dat} that contains the plot length in meters.}
 
-\item{field_size}{character string, name of the column in `dat` that contains the field size.}
+\item{field_size}{character string, name of the column in \code{dat} that contains the field size.}
 
-\item{seedlot_name}{character string, name of the column in `dat` that contains the seedlot name.}
+\item{seedlot_name}{character string, name of the column in \code{dat} that contains the seedlot name.}
 
-\item{num_seed_per_plot}{character string, name of the column in `dat` that contains the number of seed per plot.}
+\item{num_seed_per_plot}{character string, name of the column in \code{dat} that contains the number of seed per plot.}
 
-\item{weight_gram_seed_per_plot}{character string, name of the column in `dat` that contains the weight of seed per plot in grams.}
+\item{weight_gram_seed_per_plot}{character string, name of the column in \code{dat} that contains the weight of seed per plot in grams.}
 
 \item{prefix_BP}{character string, prefix for the breeding program, default is "URSN".}
 
-\item{is_private}{character string, name of the column in `dat` that contains the private status, set as 1 if private.}
+\item{is_private}{character string, name of the column in \code{dat} that contains the private status, set as 1 if private.}
 
-\item{design_type}{character string, name of the column in `dat` that contains the design type, default is "RCBD".}
+\item{design_type}{character string, name of the column in \code{dat} that contains the design type, default is "RCBD".}
 
-\item{trial_type}{character string, name of the column in `dat` that contains the trial type, default is "phenotyping_trial".}
+\item{trial_type}{character string, name of the column in \code{dat} that contains the trial type, default is "phenotyping_trial".}
 
-\item{description}{character string, name of the column in `dat` that contains the description of the trial, default is "Cooperative nursery of scab trials".}
+\item{description}{character string, name of the column in \code{dat} that contains the description of the trial, default is "Cooperative nursery of scab trials".}
 
-\item{breeding_program}{character string, name of the column in `dat` that contains the breeding program, default is "Regional Scab Nursery Cooperative".}
+\item{breeding_program}{character string, name of the column in \code{dat} that contains the breeding program, default is "Regional Scab Nursery Cooperative".}
 }
 \value{
-a data frame with the trials to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
+a data frame with the trials to add to T3 if return_table is TRUE, otherwise a file is written to the path \code{p2f}
 }
 \description{
 Create table and file to add trials to T3
 }
 \seealso{
-[create_accessions(), create_phenot()]
+\code{\link[=create_accessions(), create_phenot]{create_accessions(), create_phenot()}}
 }
 \author{
 Charlotte Brault
