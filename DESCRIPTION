@@ -47,7 +47,6 @@ Imports:
       vcfR,
       rTASSEL,
       rJava,
-      BrAPI,
       bigstatsr,
       ggthemes,
       paletteer,
