@@ -13,5 +13,5 @@ a vector of colors for the 21 wheat chromosomes
 Color palette for the 21 wheat chromosomes
 }
 \examples{
-palette=pal_21wheatchr()
+palette=pal_21wheatchr()[c(1:21)]
 }

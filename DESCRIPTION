@@ -9,15 +9,17 @@ Authors@R: c(
       role = c("aut", "cre")
     )
   )
-Description: Custom function to help data wrangling and formatting
-    for using genomic selection in hard red spring wheat breeding programs
-License: CC BY 4.0
+Description: Custom functions to help data wrangling and formatting
+    for using genomic selection in hard red spring wheat breeding programs. 
+    Format genotypic and phenotypic data, perform genomic prediction and communicate the results.
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
 URL: https://chabrault.github.io/HRSWGS/
 Suggests: 
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    roxygen2,
+    devtools
 Config/testthat/edition: 3
 Imports: 
       ggplot2,
@@ -29,5 +31,32 @@ Imports:
       parallel,
       foreach,
       doParallel,
-      magrittr
+      magrittr,
+      BGLR,
+      DT,
+      caret,
+      doSNOW,
+      glmnet,
+      gtsummary,
+      openxlsx,
+      randomForest,
+      rrBLUP,
+      janitor,
+      readxl,
+      stringdist,
+      vcfR,
+      rTASSEL,
+      rJava,
+      BrAPI,
+      bigstatsr,
+      ggthemes,
+      paletteer,
+      shiny,
+      stringr
+Remotes:
+      maize-genetics/rTASSEL,
+      TriticeaeToolbox/BrAPI.R
 Roxygen: list(markdown = TRUE)
+License: file LICENSE
+Depends:
+    R (>= 4.1.0)

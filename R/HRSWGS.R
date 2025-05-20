@@ -15,6 +15,7 @@
 #' @return list with one lement per testing (environment) set.
 #' Within each testing set, list of training environment, testing environment, genotypes in training and testing sets, and phenotypic data in training and testing sets.
 #' @author Charlotte Brault
+#' @export
 
 setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
                             ignore.genos=NULL,traits=NULL, genos=NULL,prop.CVS1=0.8){
@@ -25,7 +26,6 @@ setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
   # ignore.genos=c("Wheaton","Oslo","Bacup")
   # genos=rownames(GRM)
 
-  require(stringr) ; require(purrr) ; require(dplyr)
   out <- list()
 
   ## if list of genotypes is provided, restrict the training and testing sets to that list
@@ -131,6 +131,7 @@ setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
 #'
 #' @return list of testing set indexes for each fold.
 #' @author Charlotte Brault
+#' @export
 
 getFolds <- function(index, nb.folds=5, seed=NULL){
   stopifnot(nb.folds <= index,
@@ -150,17 +151,18 @@ getFolds <- function(index, nb.folds=5, seed=NULL){
 #' @param pedigree is character vector a pedigree? if TRUE, don't remove slash strings
 #' @param verbose logical, default to FALSE
 #'
+#' @importFrom stringr str_remove_all str_replace_all
 #' @return list of initial and corrected names
-#'
+#' @export
+
 format_names <- function(names, toupper=TRUE, dashToUnderscore=FALSE,
                          pedigree=FALSE,verbose=FALSE){
-  require(stringr)
   names_init <- names
   ## patterns to remove
   pat = " \\(S check\\)| \\(MR check\\)| = ALVORADA|\'S\"|’S’|'S'|’s’|\\*|§"
   names1 = stringr::str_remove_all(names_init, pattern=pat)
-  names1 = stringr::str_remove_all(names1, pattern= "’S’")
-  names2 = stringr::str_remove_all(names1,pattern ='[_§φ*¶]+$')
+  names1 = stringr::str_remove_all(names1, pattern= "\u2019S\u2019")
+  names2 = stringr::str_remove_all(names1,pattern ='[_§\u03c6*¶]+$')
   names2 = stringr::str_remove_all(names2,pattern ='\'')
   names3 = stringr::str_remove_all(names2, pattern=" ")
   ## remove white spaces
@@ -174,10 +176,10 @@ format_names <- function(names, toupper=TRUE, dashToUnderscore=FALSE,
 
   ## patterns to replace by underscore
   if(dashToUnderscore){
-    names8 = stringr::str_replace_all(names7,"–","_")
+    names8 = stringr::str_replace_all(names7,"\u2014","_")#"–"
     names9 = stringr::str_replace_all(names8,"-","_")
   } else{
-    names9 = stringr::str_replace_all(names7,"–","-")
+    names9 = stringr::str_replace_all(names7,"\u2014","-")#"–"
   }
 
   if(!pedigree){
@@ -215,9 +217,10 @@ format_names <- function(names, toupper=TRUE, dashToUnderscore=FALSE,
 #'
 #' @return a list of 3 elements: the correspondence data frame, the updated correspondence list, and a vector of new names to be applied to match name.
 #' @author Charlotte Brault
+#' @export
+
 concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
                                    corresp.list=NULL, verbose=1){
-  require(purrr); require(dplyr)
   stopifnot(!all(is.null(ref.name) & is.null(corresp.list)))
   ref.name <- unique(ref.name)
   input.name <- match.name ## for output of the same length
@@ -341,14 +344,10 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
 #' - entry.info: data frame of combined genotype information
 #'
 #' @author Charlotte Brault
+#' @export
+
 format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait=8){
 
-
-  require(stringr)
-  require(janitor)
-  require(readxl)
-  require(stringdist)
-  require(dplyr)
   if(is.null(names(traits))) names(traits) = traits
   if(is.null(names(locs))) names(locs) = locs
 
@@ -677,7 +676,9 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
 #'
 #' @return data frame with 0/1/2 values from the curated vcf file, with genotypes in row and markers in columns.
 #' @author Charlotte Brault
-#' @seealso [format_names()]
+#' @seealso [format_names()], [getGenoTas_to_DF()]
+#' @export
+
 format_curate_vcf <- function(vcf.p2f=NULL,
                               matrix.gt=NULL,
                               mrk.info=NULL,
@@ -698,10 +699,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
                               p2f.beagle=NULL,
                               thresh.MAF=NULL,
                               verbose=1){
-  require(janitor)
-  require(stringr)
-  require(dplyr)
-  require(vcfR)
+
   ### Verifications
   stopifnot(thresh.NA.mrk >= 0, thresh.NA.mrk <= 1,
             thresh.NA.ind >=0, thresh.NA.ind <= 1,
@@ -723,6 +721,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     ## load vcf file and convert to gt
     vcf <- vcfR::read.vcfR(vcf.p2f, verbose = FALSE)
     gt <- vcfR::extract.gt(vcf, element = "GT", as.numeric=F, IDtoRowNames = TRUE)
+    meta <- vcf@meta
     mrk.info <- tibble::as_tibble(vcfR::getFIX(vcf))
     mrk.info$POS <- as.numeric(mrk.info$POS)
     mrk.info <- dplyr::arrange(mrk.info, CHROM,POS)
@@ -917,12 +916,16 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     ## recreate vcfR object
     vcf2exp <- methods::new(Class = "vcfR")
     ### meta element
-    vcf2exp@meta <- c("##fileformat=VCFv4.2",
-                      "##reference=CSv2",
-                      "##comment=Generated from Illumina Infinium Array calls using USDA3KWheat.CSv2.Ann4.info",
-                      #"##filedate= 20065",
-                      "##source='write.vcf of vcfR'",
-                      "##FORMAT=<ID=GT,Number=1,Type=String,Description='Genotype'>")
+    if(exists(meta)){
+      vcf2exp@meta <- meta
+    } else {
+      vcf2exp@meta <- c("##fileformat=VCFv4.2",
+                        "##reference=xxx",
+                        "##comment=Generated from format_curate_vcf function",
+                        #"##filedate= 20065",
+                        "##source='write.vcf of vcfR'",
+                        "##FORMAT=<ID=GT,Number=1,Type=String,Description='Genotype'>")
+    }
 
     ### fix element: add marker information
     #### define a default mrk.info data frame if not provided
@@ -966,7 +969,6 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     if(is.null(p2f.export.vcf)){
       stop("Need to export vcf file to perform imputation")
     }
-    require(rTASSEL)
 
     tasGenoVCF <- rTASSEL::readGenotypeTableFromPath(path = p2f.export.vcf)
     ## use KNNI as imputation method, using default parameters
@@ -1069,9 +1071,6 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 #' @keywords internal
 #' @author Vishnu Ramasubramanian
 getGenoTas_to_DF <- function(tasGeno){
-  require(rTASSEL)
-  require(rJava)
-
   tasSumExp <- rTASSEL::getSumExpFromGenotypeTable(tasObj=tasGeno)
   tasGenoDF <- (SummarizedExperiment::assays(tasSumExp)[[1]])
   colnames(tasGenoDF) <- SummarizedExperiment::colData(tasSumExp)[,"Sample"]
@@ -1088,7 +1087,6 @@ getGenoTas_to_DF <- function(tasGeno){
   gt2d_tasGeno <- tasGenoDF
   rownames(gt2d_tasGeno) <- tableReport$Name
   return(gt2d_tasGeno)
-
 }
 
 
@@ -1125,6 +1123,8 @@ getGenoTas_to_DF <- function(tasGeno){
 #' @importFrom utils write.csv write.table
 #' @importFrom glmnet cv.glmnet
 #' @importFrom purrr map_dfr
+#' @export
+
 compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                                nfolds=10, h=1, nb.mtry=10, nIter=6000,burnIn=1000,
                                ntree=100,p2d.temp=NULL,
@@ -1170,7 +1170,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
       if(GP.method %in% "rrBLUP"){
-        require(rrBLUP)
         ## parallel computation of GP for rrBLUP
         out <- foreach::foreach(f=1:nfolds) %dopar%{
           ## estimate marker effects on training set
@@ -1182,7 +1181,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
       } else if(GP.method %in% "RKHS" & length(h) ==1){
-        require(BGLR)
         ## define distance matrix for RKHS
         D <- as.matrix(dist(geno_tr,method="euclidean"))^2
         D <- D/mean(D)
@@ -1203,7 +1201,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         }
 
       } else if(GP.method %in% "RKHS-KA" | length(h) >1){
-        require(BGLR)
         ## define distance matrix for RKHS
         D <- as.matrix(dist(geno_tr,method="euclidean"))^2
         D <- D/mean(D)
@@ -1227,8 +1224,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
       } else if(GP.method %in% "RandomForest"){
-        require(randomForest)
-        require(caret)
+
         ## optimize mtry = number of randomly selected variables at each split
         #tunegridrf <- expand.grid(.mtry=seq(1,ncol(geno_tr)/3,length.out=nb.mtry))
         tunegridrf <- expand.grid(.mtry=c(100,500,1000,2000,5000))
@@ -1242,7 +1238,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
           return(as.data.frame(caret::predict.train(fit,geno_tr[folds[[f]],])))
         }
       }else if(GP.method %in% "LASSO"){
-        require(glmnet)
         out <- foreach::foreach(f=1:nfolds) %dopar% {
           ### Fit the model with glmnet package
           cv <- glmnet::cv.glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],], alpha=1)
@@ -1252,7 +1247,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         }
 
       } else if(GP.method %in% "BayesA"){
-        require(BGLR)
         out <- foreach::foreach(f=1:nfolds) %dopar% {
 
           if(!is.null(p2d.temp)){
@@ -1267,7 +1261,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         }
 
       } else if(GP.method %in% "BayesB"){
-        require(BGLR)
         out <- foreach::foreach(f=1:nfolds) %dopar% {
           if(!is.null(p2d.temp)){
             p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
@@ -1352,6 +1345,8 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 #' @importFrom foreach %dopar% foreach
 #' @importFrom rrBLUP kinship.BLUP
 #' @importFrom tidyr pivot_wider
+#' @export
+
 compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                                runCV=FALSE, testSetGID=NULL,
                                nreps=10,nfolds=10, h=1, nb.mtry=10,
@@ -1416,7 +1411,6 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                               return(tmp)
                             }
   } else if(GP.method == "RKHS"){
-    require(BGLR)
     D <- as.matrix(dist(geno,method="euclidean"))^2
     D <- D/mean(D, na.rm=T)
     ### compute kernel
@@ -1497,6 +1491,8 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 #'
 #' @returns data frame with columns for trait, intercept, slope, R2.adj, pvalue and percentage of change
 #' @author Charlotte Brault
+#' @export
+
 GGAIN <- function(data, traits, first_year){
   stopifnot(all(traits %in% colnames(data)),
             all(first_year %in% colnames(data)))
@@ -1534,8 +1530,19 @@ GGAIN <- function(data, traits, first_year){
 
 ## from R metan package
 # Function to make HTML tables
+#' Print nice table using DT
+#'
+#' @param table data frame to print
+#' @param rownames logical, if TRUE, print row names, default is FALSE
+#' @param digits integer, number of digits to print for numeric columns, default is 3
+#' @param ... additional arguments to pass to DT::datatable
+#'
+#' @returns a DT datatable object
+#' @export
+#' @examples
+#' print_table(mtcars)
+
 print_table <- function(table, rownames = FALSE, digits = 3, ...){
-  require(DT)
   df <- DT::datatable(table, rownames = rownames, extensions = 'Buttons',
                       options = list(scrollX = TRUE,
                                      dom = '<<t>Bp>',
@@ -1561,8 +1568,9 @@ print_table <- function(table, rownames = FALSE, digits = 3, ...){
 #' @returns a gtsummary object
 #' @author Charlotte Brault
 #' @importFrom gtsummary tbl_summary add_p
+#' @export
+
 data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
-  require(gtsummary)
 
   ## if not provided, select numeric variables
   if(is.null(variables)){
@@ -1598,7 +1606,7 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 #'
 #' @importFrom ggplot2 aes geom_density geom_area geom_vline labs ggplot
 #' @returns a ggplot object
-#'
+#' @export
 plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=NULL){
 
   ## add verifications
@@ -1633,11 +1641,11 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
   p <- ggplot2::ggplot(BV, aes(x=.data[[trait]]))+
     ggplot2::geom_density(color = 'skyblue') +
     ggplot2::geom_area(data = subset(df.dens, x >= q15.9 & x <= q84.1), # 1 Std 68.2%
-              aes(x=x,y=y), fill='skyblue', alpha=0.8) +
+                       aes(x=x,y=y), fill='skyblue', alpha=0.8) +
     ggplot2::geom_area(data = subset(df.dens, x >= q2.3 & x <= q97.7), # 2 Std 95.4%
-              aes(x=x,y=y), fill='skyblue', alpha=0.6) +
+                       aes(x=x,y=y), fill='skyblue', alpha=0.6) +
     ggplot2::geom_area(data = subset(df.dens, x >= q0.01 & x <= q99.9), # 3 Std 99.8%
-              aes(x=x,y=y), fill='skyblue', alpha=0.3) +
+                       aes(x=x,y=y), fill='skyblue', alpha=0.3) +
     ggplot2::geom_vline(xintercept=meanx, color="grey60", linewidth=1.5, linetype="dashed") +
     ggplot2::geom_vline(xintercept=medx, color='#FFFFFF',linewidth=1.5, linetype="dashed") +
     ggplot2::labs(title=trait,x=trait, y="Density") +
@@ -1648,7 +1656,7 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
     ## subset the dataset for the selected genotypes
     dat.sel <- BV[BV[[genoCol]] %in% selGen,]
     p <- p+ ggplot2::geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]], color=.data[[colorCol]]),
-                     linewidth=1, sides="b", inherit.aes = FALSE)
+                              linewidth=1, sides="b", inherit.aes = FALSE)
 
     if(is.numeric(dat.sel[[colorCol]])){
       p <- p +
@@ -1690,6 +1698,8 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
 #' @author Charlotte Brault
 #' @importFrom shiny shinyApp fluidPage titlePanel downloadButton reactive
 #' @importFrom DT datatable formatSignif formatStyle styleInterval DTOutput renderDT
+#' @export
+
 SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL){
   num_cols <- c(as.numeric(which(sapply(data, class) == "numeric")))
 
@@ -1798,15 +1808,14 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
 #' @return a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
 #' @author Charlotte Brault
 #' @importFrom dplyr distinct relocate
-create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE,
-                              accession_name=NULL, population_name=NULL,
-                              `organization_name(s)`=NULL, `synonym(s)`=NULL,
-                              `variety(s)`= NULL,`country_of_origin(s)`=NULL,
-                              `notes(s)`= NULL, `accession_number(s)`=NULL,
-                              purdy_pedigree=NULL,filial_generation=NULL,
-                              species_name="Triticum aestivum"){
-  require(openxlsx)
-  require(dplyr)
+#' @export
+create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE,
+                                 accession_name=NULL, population_name=NULL,
+                                 `organization_name(s)`=NULL, `synonym(s)`=NULL,
+                                 `variety(s)`= NULL,`country_of_origin(s)`=NULL,
+                                 `notes(s)`= NULL, `accession_number(s)`=NULL,
+                                 purdy_pedigree=NULL,filial_generation=NULL,
+                                 species_name="Triticum aestivum"){
 
   ## Verifications
   stopifnot(!is.null(dat), !is.null(p2f) |!return_table,
@@ -1916,42 +1925,43 @@ create_accessions <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE
 #' @param breeding_program character string, name of the column in `dat` that contains the breeding program, default is "Regional Scab Nursery Cooperative".
 #'
 #' @return a data frame with the trials to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
-#' @seealso [create_accessions(), create_phenot()]
+#' @seealso [create_accessions_T3(), create_phenot_T3()]
 #' @author Charlotte Brault
 #' @importFrom dplyr distinct relocate
-create_trials <- function(dat=NULL,
-                          checkDB=TRUE,
-                          p2f=NULL,
-                          return_table=TRUE,
-                          keepID=NULL,
-                          year=NULL,
-                          location=NULL,
-                          accession_name=NULL,
-                          transplanting_date=NA,
-                          plot_number=NA,
-                          planting_date=NA,
-                          harvest_date=NA,
-                          block_number=NA,
-                          is_a_control=NA,
-                          rep_number=NA,
-                          range_number=NA,
-                          row_number=NA,
-                          col_number=NA,
-                          plot_width=NA,
-                          plot_length=NA,
-                          field_size=NA,
-                          seedlot_name=NA,
-                          num_seed_per_plot=NA,
-                          weight_gram_seed_per_plot=NA,
-                          location_state_corresp=NULL,
-                          prefix_BP="URSN",
-                          is_private=NA,
-                          design_type="RCBD",
-                          trial_type="phenotyping_trial",
-                          description="Cooperative nursery of scab trials",
-                          breeding_program="Regional Scab Nursery Cooperative"){
+#' @export
 
-  require(openxlsx) ; require(dplyr);  require(purrr)
+create_trials_T3 <- function(dat=NULL,
+                             checkDB=TRUE,
+                             p2f=NULL,
+                             return_table=TRUE,
+                             keepID=NULL,
+                             year=NULL,
+                             location=NULL,
+                             accession_name=NULL,
+                             transplanting_date=NA,
+                             plot_number=NA,
+                             planting_date=NA,
+                             harvest_date=NA,
+                             block_number=NA,
+                             is_a_control=NA,
+                             rep_number=NA,
+                             range_number=NA,
+                             row_number=NA,
+                             col_number=NA,
+                             plot_width=NA,
+                             plot_length=NA,
+                             field_size=NA,
+                             seedlot_name=NA,
+                             num_seed_per_plot=NA,
+                             weight_gram_seed_per_plot=NA,
+                             location_state_corresp=NULL,
+                             prefix_BP="URSN",
+                             is_private=NA,
+                             design_type="RCBD",
+                             trial_type="phenotyping_trial",
+                             description="Cooperative nursery of scab trials",
+                             breeding_program="Regional Scab Nursery Cooperative"){
+
 
   ## Verifications
   stopifnot(!is.null(dat), !is.null(p2f) |!return_table,
@@ -2060,8 +2070,6 @@ create_trials <- function(dat=NULL,
 
 
   if(checkDB){
-    require(BrAPI)
-
     selected_breeding_program <- breeding_program
     conn <- BrAPI::getBrAPIConnection("T3/Wheat")
     resp <- conn$get("/studies", query=list(programName=selected_breeding_program), page="all")
@@ -2124,7 +2132,7 @@ create_trials <- function(dat=NULL,
 
   ## for control column, replace TRUE/FALSE with 1/0
   if(!is.na(colsFormat["is_a_control"])){
-    if(class(dat.trial$is_a_control) == "logical"){
+    if(is.logical(dat.trial$is_a_control)){
       dat.trial$is_a_control <- plyr::mapvalues(dat.trial$is_a_control,
                                                 from=c(TRUE,FALSE),to=c(1,0))
     }
@@ -2169,24 +2177,22 @@ create_trials <- function(dat=NULL,
 }
 
 
-#' Create table and file to add phenotypes in T3
+#' Create table and file to add phenotype data in T3
 #'
 #' @param dat data frame with phenotypic data, containing at least the plot name and the traits
 #' @param df_corresp_trait data frame with the correspondence between the column names in `dat` and the traits in T3, must countain the columns `T3_trait` and `corresp_col`.
 #' @param p2f path to file to write the output of the function
 #' @param return_table logical, whether to return the table or not, default is TRUE.
 #' @param plot_name_col character string, name of the column in `dat` that contains the plot name, default is "plot_name"
-#'
+#' @seealso [create_accessions_T3(), create_trials_T3()]
 #' @return a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`.
 #' @importFrom stats na.omit
 #' @importFrom openxlsx write.xlsx
 #' @importFrom dplyr select distinct
+#' @export
 
-create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
+create_phenot_T3 <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
                           return_table=TRUE, plot_name_col=NULL){
-  require(openxlsx)
-  require(dplyr)
-  require(purrr)
 
   df_corresp_trait <- stats::na.omit(df_corresp_trait)
 
@@ -2199,7 +2205,7 @@ create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
   ## select ID column and traits that are in the correspondence table
   T3.phenot <- dat %>%
     dplyr::select(tidyselect::all_of(c(plot_name_col,
-                           intersect(df_corresp_trait$corresp_col, colnames(dat))))) %>%
+                                       intersect(df_corresp_trait$corresp_col, colnames(dat))))) %>%
     dplyr::distinct()
   ## set column names to what is expected in T3
   colnames(T3.phenot) <- plyr::mapvalues(colnames(T3.phenot),
@@ -2241,7 +2247,7 @@ create_phenot <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
 #' Color palette for locations
 #'
 #' @returns a vector of colors for the locations
-#'
+#' @export
 #' @examples
 #' palette=pal_loc()[c("GLL","MRD","LGD","CRK","CRT","PRP","FRG","BRK","STP")]
 pal_loc <- function(){
@@ -2277,7 +2283,7 @@ pal_loc <- function(){
 #' Color palette for random colors
 #'
 #' @param n number of colors to return, default is 25
-#'
+#' @export
 #' @returns a vector of colors
 #'
 #' @examples
@@ -2294,7 +2300,7 @@ pal_rand <- function(n=25){
 #' Color palette for breeding programs
 #'
 #' @returns a vector of colors for the breeding programs
-#'
+#' @export
 #' @examples
 #' palette=pal_orga()[c("UMN","NDSU","SDSU","MSU","Check","Unknown")]
 pal_orga <- function(){
@@ -2323,9 +2329,9 @@ pal_orga <- function(){
 #' Color palette for the 21 wheat chromosomes
 #'
 #' @returns a vector of colors for the 21 wheat chromosomes
-#'
+#' @export
 #' @examples
-#' palette=pal_21wheatchr()
+#' palette=pal_21wheatchr()[c(1:21)]
 pal_21wheatchr <- function(){
   return(c("#8B0000", "#FF4500", "#FA8072", "#27408B", "#4169E1", "#1C86EE",
            "#008B45", "#00CD66", "#00FF7F", "goldenrod4", "goldenrod2", "gold",

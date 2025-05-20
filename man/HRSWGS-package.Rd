@@ -6,7 +6,7 @@
 \alias{HRSWGS-package}
 \title{HRSWGS: Hard Red Spring Wheat breeding Genomic Selection toolbox}
 \description{
-Custom function to help data wrangling and formatting for using genomic selection in hard red spring wheat breeding programs
+Custom functions to help data wrangling and formatting for using genomic selection in hard red spring wheat breeding programs. Format genotypic and phenotypic data, perform genomic prediction and communicate the results.
 }
 \seealso{
 Useful links:

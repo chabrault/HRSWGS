@@ -71,7 +71,7 @@ data frame with 0/1/2 values from the curated vcf file, with genotypes in row an
 Format and curate vcf file
 }
 \seealso{
-\code{\link[=format_names]{format_names()}}
+\code{\link[=format_names]{format_names()}}, \code{\link[=getGenoTas_to_DF]{getGenoTas_to_DF()}}
 }
 \author{
 Charlotte Brault
