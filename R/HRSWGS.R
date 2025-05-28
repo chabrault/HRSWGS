@@ -734,6 +734,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
   } else {
     stopifnot(!is.null(matrix.gt), all(c("CHROM","POS") %in% colnames(matrix.gt)[c(1,2)]))
     vcf.file <- matrix.gt
+    meta <- NULL
   }
 
   if(verbose >0){
@@ -747,9 +748,13 @@ format_curate_vcf <- function(vcf.p2f=NULL,
   }
   ## remove duplicated rows
   ##vcf.file <- distinct(vcf.file) #
-  ## replace patterns "./." and '2/2" by NA
+
   vcf.file[,3:ncol(vcf.file)] <- as.data.frame(apply(vcf.file[,3:ncol(vcf.file)],2, function(x)
-    gsub(pattern="\\.|2",x=x,replacement=NA)))
+    gsub(pattern="\\.",x=x,replacement=NA)))
+  ## replace patterns "./." by NA and '2/2" by "1/1"
+  vcf.file[,3:ncol(vcf.file)] <- as.data.frame(apply(vcf.file[,3:ncol(vcf.file)],2, function(x)
+    gsub(pattern="2/2",x=x,replacement="1/1")))
+
   ## set position as numeric
   vcf.file$POS <- as.numeric(stringr::str_trim(vcf.file$POS))
 
@@ -916,7 +921,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     ## recreate vcfR object
     vcf2exp <- methods::new(Class = "vcfR")
     ### meta element
-    if(exists(meta)){
+    if(!is.null(meta)){
       vcf2exp@meta <- meta
     } else {
       vcf2exp@meta <- c("##fileformat=VCFv4.2",
@@ -937,6 +942,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
                                        REF="A",ALT="T",
                                        QUAL=".",FILTER="PASS",INFO=".",
                                        FORMAT="GT"))
+      mrk.info$CHROM <- gsub("Chr","chr",mrk.info$CHROM)
 
     } else {
       ## use the mrk.info from the vcf file, subset selected markers
