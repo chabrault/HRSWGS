@@ -1102,7 +1102,7 @@ getGenoTas_to_DF <- function(tasGeno){
 #' @param geno genomic data with genotypes in row (GID in rownames) and marker in columns. Values should be column centered and scaled.
 #' @param pheno phenotypic data with genotypes in row (in GID column) and traits in columns. Phenotypic value should be corrected for year and location effects beforehand.
 #' @param traits character vector of trait names
-#' @param GP.method character vector of genomic prediction methods to use
+#' @param GP.method character vector of length one of genomic prediction methods to use. Must be one of "rrBLUP", "GBLUP", "RKHS", "RKHS-KA", "RandomForest", "BayesA", "BayesB" or "LASSO".
 #' @param nreps number of repetitions for cross-validation, default is 10
 #' @param nfolds number of folds for cross-validation, default is 10
 #' @param h bandwith parameter for RKHS, default is 1. If multiple values are provided, method will be RKHS Kernel Averaging.
@@ -1137,7 +1137,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                                nb.cores=1, p2f.stats=NULL){
 
 
-  stopifnot(GP.method %in% c("rrBLUP","RKHS","RKHS-KA","RandomForest",
+  stopifnot(GP.method %in% c("rrBLUP","GBLUP","RKHS","RKHS-KA","RandomForest",
                              "BayesA","BayesB","LASSO"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno))
@@ -1183,6 +1183,21 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                                       G.train=geno_tr[-folds[[f]],],
                                       G.pred=geno_tr[folds[[f]],], K.method="RR")$g.pred
           return(res)
+        }
+
+      } else if(GP.method %in% "GBLUP"){
+        ## parallel computation of GP for GBLUP
+        out <- foreach::foreach(f=1:nfolds) %dopar%{
+          ## compute the genomic relationship matrix
+          K <- tcrossprod(geno_tr)/ncol(geno_tr)
+
+          ## function inputs
+          data <- pheno_tr
+          ## set phenotypes to NA for the training set
+          data[[tr]][folds[[f]]] <- NA
+          ## estimate marker effects on training set
+          res <- rrBLUP::kin.blup(data=data,geno="GID",pheno=tr,K=K)
+          return(res$pred[folds[[f]]])
         }
 
 
@@ -1552,7 +1567,7 @@ print_table <- function(table, rownames = FALSE, digits = 3, ...){
   df <- DT::datatable(table, rownames = rownames, extensions = 'Buttons',
                       options = list(scrollX = TRUE,
                                      dom = '<<t>Bp>',
-                                     buttons = c('copy', 'excel', 'pdf', 'print')), ...)
+                                     buttons = c('copy','csv', 'excel', 'pdf', 'print')), ...)
   num_cols <- c(as.numeric(which(sapply(table, class) == "numeric")))
   if(length(num_cols) > 0){
     DT::formatSignif(df, columns = num_cols, digits = digits)
@@ -1903,6 +1918,7 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
 #' @param checkDB logical, whether to check the T3 database with `BrAPI` package to exclude trials already in the database, default is TRUE.
 #' @param p2f path to file (with xlsx extension) to write the output of the function
 #' @param return_table logical, whether to return the table or not, default is TRUE.
+#' @param location_state_corresp list, a named list with the correspondence between state (or Canadian province) and location, default is NULL. If not provided, a default list is used.
 #' @param keepID character string, ID column to keep in the table (returned not exported)
 #' @param year character string, name of the column in `dat` that contains the year, mandatory.
 #' @param location character string, name of the column in `dat` that contains the location, mandatory.
@@ -1940,6 +1956,7 @@ create_trials_T3 <- function(dat=NULL,
                              checkDB=TRUE,
                              p2f=NULL,
                              return_table=TRUE,
+                             location_state_corresp=NULL,
                              keepID=NULL,
                              year=NULL,
                              location=NULL,
@@ -1960,7 +1977,6 @@ create_trials_T3 <- function(dat=NULL,
                              seedlot_name=NA,
                              num_seed_per_plot=NA,
                              weight_gram_seed_per_plot=NA,
-                             location_state_corresp=NULL,
                              prefix_BP="URSN",
                              is_private=NA,
                              design_type="RCBD",
@@ -1980,26 +1996,30 @@ create_trials_T3 <- function(dat=NULL,
            "ND"=c("Fargo","Prosper","Langdon","Carrington", "Minot","Casselton",
                   "Williston","Hettinger","Thompson","Berthold","Dickinson","Forman"),
            "SD"=c("Brookings", "Selby","Groton","Aberdeen","Madison","Highmore",
-                  "Watertown","Redfield"),
+                  "Watertown","Redfield",),
            "MB, Canada"=c("Morden","Glenlea", "Winnipeg"),
            "NE"=c("Sidney_NE","Mead")
       )
   }
 
 
+  ## format the columns that correspond to columns in dat.trial
   colsFormat <- c(year,location,accession_name,plot_number,
                   planting_date, harvest_date,transplanting_date,
                   block_number, is_a_control, rep_number, range_number,
                   row_number, col_number, plot_width, plot_length, field_size,
                   seedlot_name,num_seed_per_plot,
-                  weight_gram_seed_per_plot,is_private)
+                  weight_gram_seed_per_plot,is_private,description)
   names(colsFormat) <- c("year","location","accession_name","plot_number",
                          "planting_date", "harvest_date","transplanting_date",
                          "block_number", "is_a_control", "rep_number",
                          "range_number","row_number", "col_number",
                          "plot_width", "plot_length", "field_size",
                          "seedlot_name","num_seed_per_plot",
-                         "weight_gram_seed_per_plot","is_private")
+                         "weight_gram_seed_per_plot","is_private","description")
+
+
+
   colsTrial <- stats::na.omit(colsFormat)
 
   stopifnot(all(colsTrial %in% colnames(dat)))
@@ -2156,7 +2176,7 @@ create_trials_T3 <- function(dat=NULL,
 
   T3.trial <- cbind(dat.trial,#[,!colnames(dat.trial) %in% "ID"],
                     breeding_program=breeding_program,
-                    design_type=design_type,description=description,
+                    design_type=design_type,#description=description,
                     trial_type=trial_type)
 
   ## reorder columns
@@ -2198,7 +2218,7 @@ create_trials_T3 <- function(dat=NULL,
 #' @export
 
 create_phenot_T3 <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
-                          return_table=TRUE, plot_name_col=NULL){
+                             return_table=TRUE, plot_name_col=NULL){
 
   df_corresp_trait <- stats::na.omit(df_corresp_trait)
 
