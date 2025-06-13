@@ -42,6 +42,7 @@
 <span>  checkDB <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  p2f <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  return_table <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  location_state_corresp <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  keepID <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  year <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  location <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -62,7 +63,6 @@
 <span>  seedlot_name <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  num_seed_per_plot <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  weight_gram_seed_per_plot <span class="op">=</span> <span class="cn">NA</span>,</span>
-<span>  location_state_corresp <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  prefix_BP <span class="op">=</span> <span class="st">"URSN"</span>,</span>
 <span>  is_private <span class="op">=</span> <span class="cn">NA</span>,</span>
 <span>  design_type <span class="op">=</span> <span class="st">"RCBD"</span>,</span>
@@ -90,6 +90,10 @@
 
 <dt id="arg-return-table">return_table<a class="anchor" aria-label="anchor" href="#arg-return-table"></a></dt>
 <dd><p>logical, whether to return the table or not, default is TRUE.</p></dd>
+
+
+<dt id="arg-location-state-corresp">location_state_corresp<a class="anchor" aria-label="anchor" href="#arg-location-state-corresp"></a></dt>
+<dd><p>list, a named list with the correspondence between state (or Canadian province) and location, default is NULL. If not provided, a default list is used.</p></dd>
 
 
 <dt id="arg-keepid">keepID<a class="anchor" aria-label="anchor" href="#arg-keepid"></a></dt>
