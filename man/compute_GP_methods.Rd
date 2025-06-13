@@ -28,7 +28,7 @@ compute_GP_methods(
 
 \item{traits}{character vector of trait names}
 
-\item{GP.method}{character vector of genomic prediction methods to use}
+\item{GP.method}{character vector of length one of genomic prediction methods to use. Must be one of "rrBLUP", "GBLUP", "RKHS", "RKHS-KA", "RandomForest", "BayesA", "BayesB" or "LASSO".}
 
 \item{nreps}{number of repetitions for cross-validation, default is 10}
 

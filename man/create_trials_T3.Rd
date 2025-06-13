@@ -9,6 +9,7 @@ create_trials_T3(
   checkDB = TRUE,
   p2f = NULL,
   return_table = TRUE,
+  location_state_corresp = NULL,
   keepID = NULL,
   year = NULL,
   location = NULL,
@@ -29,7 +30,6 @@ create_trials_T3(
   seedlot_name = NA,
   num_seed_per_plot = NA,
   weight_gram_seed_per_plot = NA,
-  location_state_corresp = NULL,
   prefix_BP = "URSN",
   is_private = NA,
   design_type = "RCBD",
@@ -46,6 +46,8 @@ create_trials_T3(
 \item{p2f}{path to file (with xlsx extension) to write the output of the function}
 
 \item{return_table}{logical, whether to return the table or not, default is TRUE.}
+
+\item{location_state_corresp}{list, a named list with the correspondence between state (or Canadian province) and location, default is NULL. If not provided, a default list is used.}
 
 \item{keepID}{character string, ID column to keep in the table (returned not exported)}
 
