@@ -44,12 +44,12 @@
 <span>  return_table <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  accession_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  population_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  `organization_name(s)` <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  `synonym(s)` <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  `variety(s)` <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  `country_of_origin(s)` <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  `notes(s)` <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  `accession_number(s)` <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  organization_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  synonym <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  variety <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  country_of_origin <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  notes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  accession_number <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  purdy_pedigree <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  filial_generation <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  species_name <span class="op">=</span> <span class="st">"Triticum aestivum"</span></span>
@@ -84,6 +84,30 @@
 <dd><p>character string, name of the column in <code>dat</code> that contains the population name</p></dd>
 
 
+<dt id="arg-organization-name">organization_name<a class="anchor" aria-label="anchor" href="#arg-organization-name"></a></dt>
+<dd><p>charac6er string, name of the column in <code>dat</code> that contains the organization name</p></dd>
+
+
+<dt id="arg-synonym">synonym<a class="anchor" aria-label="anchor" href="#arg-synonym"></a></dt>
+<dd><p>character string, name of the column in <code>dat</code> that contains the synonym name</p></dd>
+
+
+<dt id="arg-variety">variety<a class="anchor" aria-label="anchor" href="#arg-variety"></a></dt>
+<dd><p>character string, name of the column in <code>dat</code> that contains the variety name</p></dd>
+
+
+<dt id="arg-country-of-origin">country_of_origin<a class="anchor" aria-label="anchor" href="#arg-country-of-origin"></a></dt>
+<dd><p>character string, name of the column in <code>dat</code> that contains the country of origin</p></dd>
+
+
+<dt id="arg-notes">notes<a class="anchor" aria-label="anchor" href="#arg-notes"></a></dt>
+<dd><p>character string, name of the column in <code>dat</code> that contains the notes</p></dd>
+
+
+<dt id="arg-accession-number">accession_number<a class="anchor" aria-label="anchor" href="#arg-accession-number"></a></dt>
+<dd><p>character string, name of the column in <code>dat</code> that contains the accession number</p></dd>
+
+
 <dt id="arg-purdy-pedigree">purdy_pedigree<a class="anchor" aria-label="anchor" href="#arg-purdy-pedigree"></a></dt>
 <dd><p>character string, name of the column in <code>dat</code> that contains the purdy pedigree</p></dd>
 
@@ -95,34 +119,14 @@
 <dt id="arg-species-name">species_name<a class="anchor" aria-label="anchor" href="#arg-species-name"></a></dt>
 <dd><p>character string, name of the species, default is "Triticum aestivum" (fixed).</p></dd>
 
-
-<dt id="arg--organization-name-s-">`organization_name(s)`<a class="anchor" aria-label="anchor" href="#arg--organization-name-s-"></a></dt>
-<dd><p>charac6er string, name of the column in <code>dat</code> that contains the organization name</p></dd>
-
-
-<dt id="arg--synonym-s-">`synonym(s)`<a class="anchor" aria-label="anchor" href="#arg--synonym-s-"></a></dt>
-<dd><p>character string, name of the column in <code>dat</code> that contains the synonym name</p></dd>
-
-
-<dt id="arg--variety-s-">`variety(s)`<a class="anchor" aria-label="anchor" href="#arg--variety-s-"></a></dt>
-<dd><p>character string, name of the column in <code>dat</code> that contains the variety name</p></dd>
-
-
-<dt id="arg--country-of-origin-s-">`country_of_origin(s)`<a class="anchor" aria-label="anchor" href="#arg--country-of-origin-s-"></a></dt>
-<dd><p>character string, name of the column in <code>dat</code> that contains the country of origin</p></dd>
-
-
-<dt id="arg--notes-s-">`notes(s)`<a class="anchor" aria-label="anchor" href="#arg--notes-s-"></a></dt>
-<dd><p>character string, name of the column in <code>dat</code> that contains the notes</p></dd>
-
-
-<dt id="arg--accession-number-s-">`accession_number(s)`<a class="anchor" aria-label="anchor" href="#arg--accession-number-s-"></a></dt>
-<dd><p>character string, name of the column in <code>dat</code> that contains the accession number</p></dd>
-
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path <code>p2f</code></p>
+    </div>
+    <div class="section level2">
+    <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
+    <div class="dont-index"><p><code><a href="create_trials_T3.html">create_trials_T3</a></code>, <code><a href="create_phenot_T3.html">create_phenot_T3</a></code></p></div>
     </div>
     <div class="section level2">
     <h2 id="author">Author<a class="anchor" aria-label="anchor" href="#author"></a></h2>
