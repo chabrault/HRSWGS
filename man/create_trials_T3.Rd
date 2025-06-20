@@ -108,7 +108,7 @@ a data frame with the trials to add to T3 if return_table is TRUE, otherwise a f
 Create table and file to add trials to T3
 }
 \seealso{
-\code{\link[=create_accessions_T3(), create_phenot_T3]{create_accessions_T3(), create_phenot_T3()}}
+\code{\link{create_accessions_T3}}, \code{\link{create_phenot_T3}}
 }
 \author{
 Charlotte Brault

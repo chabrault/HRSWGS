@@ -30,5 +30,5 @@ a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise
 Create table and file to add phenotype data in T3
 }
 \seealso{
-\code{\link[=create_accessions_T3(), create_trials_T3]{create_accessions_T3(), create_trials_T3()}}
+\code{\link{create_accessions_T3()}}, \code{\link{create_trials_T3()}}
 }

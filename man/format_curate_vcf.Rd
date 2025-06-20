@@ -56,6 +56,10 @@ format_curate_vcf(
 
 \item{format.names}{logical, use a custom function to transform genotype names, default is FALSE}
 
+\item{concordance.function}{logical, use a custom function to match genotype names, default is FALSE}
+
+\item{corresp.geno.list}{named list of correspondence between genotype names, with correct spelling as name and possible synonym as character vector, default is NULL.}
+
 \item{imputation}{character, impute missing values with kNNI or Beagle or don't impute, default is NULL (no imputation)}
 
 \item{p2f.beagle}{path to export file for Beagle imputation, default is NULL}
@@ -71,7 +75,7 @@ data frame with 0/1/2 values from the curated vcf file, with genotypes in row an
 Format and curate vcf file
 }
 \seealso{
-\code{\link[=format_names]{format_names()}}, \code{\link[=getGenoTas_to_DF]{getGenoTas_to_DF()}}
+\code{\link[=format_names]{format_names()}}, \code{\link[=getGenoTas_to_DF]{getGenoTas_to_DF()}}, \code{\link[=concordance_match_name]{concordance_match_name()}}
 }
 \author{
 Charlotte Brault

@@ -27,10 +27,8 @@ Imports:
       plyr,
       dplyr,
       purrr,
-      ggpubr,
       parallel,
       foreach,
-      doParallel,
       magrittr,
       BGLR,
       DT,
@@ -48,10 +46,10 @@ Imports:
       rTASSEL,
       rJava,
       bigstatsr,
-      ggthemes,
       paletteer,
       shiny,
-      stringr
+      stringr,
+      tidyselect
 Remotes:
       maize-genetics/rTASSEL,
       TriticeaeToolbox/BrAPI.R

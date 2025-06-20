@@ -11,12 +11,12 @@ create_accessions_T3(
   return_table = TRUE,
   accession_name = NULL,
   population_name = NULL,
-  `organization_name(s)` = NULL,
-  `synonym(s)` = NULL,
-  `variety(s)` = NULL,
-  `country_of_origin(s)` = NULL,
-  `notes(s)` = NULL,
-  `accession_number(s)` = NULL,
+  organization_name = NULL,
+  synonym = NULL,
+  variety = NULL,
+  country_of_origin = NULL,
+  notes = NULL,
+  accession_number = NULL,
   purdy_pedigree = NULL,
   filial_generation = NULL,
   species_name = "Triticum aestivum"
@@ -35,29 +35,32 @@ create_accessions_T3(
 
 \item{population_name}{character string, name of the column in \code{dat} that contains the population name}
 
+\item{organization_name}{charac6er string, name of the column in \code{dat} that contains the organization name}
+
+\item{synonym}{character string, name of the column in \code{dat} that contains the synonym name}
+
+\item{variety}{character string, name of the column in \code{dat} that contains the variety name}
+
+\item{country_of_origin}{character string, name of the column in \code{dat} that contains the country of origin}
+
+\item{notes}{character string, name of the column in \code{dat} that contains the notes}
+
+\item{accession_number}{character string, name of the column in \code{dat} that contains the accession number}
+
 \item{purdy_pedigree}{character string, name of the column in \code{dat} that contains the purdy pedigree}
 
 \item{filial_generation}{character string, name of the column in \code{dat} that contains the filial generation}
 
 \item{species_name}{character string, name of the species, default is "Triticum aestivum" (fixed).}
-
-\item{`organization_name(s)`}{charac6er string, name of the column in \code{dat} that contains the organization name}
-
-\item{`synonym(s)`}{character string, name of the column in \code{dat} that contains the synonym name}
-
-\item{`variety(s)`}{character string, name of the column in \code{dat} that contains the variety name}
-
-\item{`country_of_origin(s)`}{character string, name of the column in \code{dat} that contains the country of origin}
-
-\item{`notes(s)`}{character string, name of the column in \code{dat} that contains the notes}
-
-\item{`accession_number(s)`}{character string, name of the column in \code{dat} that contains the accession number}
 }
 \value{
 a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path \code{p2f}
 }
 \description{
 Create table and file to add accession to T3
+}
+\seealso{
+\code{\link{create_trials_T3}}, \code{\link{create_phenot_T3}}
 }
 \author{
 Charlotte Brault

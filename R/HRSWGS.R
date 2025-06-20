@@ -669,6 +669,8 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
 #' @param thresh.NA.ind numeric, threshold of the maximum proportion missing values for individuals, default is 0.5
 #' @param thresh.NA.mrk numeric, threshold of the maximum proportion of missing values for markers, default is 0.5
 #' @param format.names logical, use a custom function to transform genotype names, default is FALSE
+#' @param concordance.function logical, use a custom function to match genotype names, default is FALSE
+#' @param corresp.geno.list named list of correspondence between genotype names, with correct spelling as name and possible synonym as character vector, default is NULL.
 #' @param imputation character, impute missing values with kNNI or Beagle or don't impute, default is NULL (no imputation)
 #' @param p2f.beagle path to export file for Beagle imputation, default is NULL
 #' @param thresh.MAF numeric, threshold of minor allele frequency, default is NULL
@@ -676,7 +678,7 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
 #'
 #' @return data frame with 0/1/2 values from the curated vcf file, with genotypes in row and markers in columns.
 #' @author Charlotte Brault
-#' @seealso [format_names()], [getGenoTas_to_DF()]
+#' @seealso [format_names()], [getGenoTas_to_DF()], [concordance_match_name()]
 #' @export
 
 format_curate_vcf <- function(vcf.p2f=NULL,
@@ -1214,10 +1216,12 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
           yNA <- y
           yNA[folds[[f]]] <- NA
           if(!is.null(p2d.temp)){
-            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
+            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,
+                               "_",r,"_",f)
           }
           fit <- BGLR::BGLR(y=yNA,ETA=list(list(K=K,model='RKHS')),
-                            nIter=nIter,burnIn=burnIn,saveAt=p2f.temp,verbose=FALSE)
+                            nIter=nIter,burnIn=burnIn,
+                            saveAt=p2f.temp,verbose=FALSE)
           return(as.data.frame(fit$yHat[folds[[f]]]))
         }
 
@@ -1236,9 +1240,11 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
           yNA <- y
           yNA[folds[[f]]] <- NA
           if(!is.null(p2d.temp)){
-            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
+            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",
+                               tr,"_",r,"_",f)
           }
-          fit <- BGLR::BGLR(y=yNA,ETA=KList,nIter=nIter,burnIn=burnIn,
+          fit <- BGLR::BGLR(y=yNA,ETA=KList,
+                            nIter=nIter,burnIn=burnIn,
                             saveAt=p2f.temp,verbose=FALSE)
           return(as.data.frame(fit$yHat[folds[[f]]]))
         }
@@ -1366,6 +1372,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 #' @importFrom foreach %dopar% foreach
 #' @importFrom rrBLUP kinship.BLUP
 #' @importFrom tidyr pivot_wider
+#' @importFrom tidyselect all_of
 #' @export
 
 compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
@@ -1377,7 +1384,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                                p2f.pred=NULL, verbose=1){
 
   ## initial verifications
-  stopifnot(GP.method %in% c("rrBLUP","RKHS","BayesA","BayesB"),
+  stopifnot(GP.method %in% c("rrBLUP","RKHS","BayesA","BayesB","BayesC"),
             #"LASSO","RKHS-KA","RandomForest"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno),
@@ -1392,7 +1399,8 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
   if(runCV){
     cmonGID <- intersect(rownames(geno), pheno$GID)
     if(verbose > 0){
-      print(paste0("Compute genomic prediction in cross-validation for ", length(cmonGID)," common genotypes"))
+      print(paste0("Compute genomic prediction in cross-validation for ",
+                   length(cmonGID)," common genotypes"))
     }
     ## use custom function
     gp.cv <- compute_GP_methods(
@@ -1424,6 +1432,10 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                               yNA <- merge(data.frame(GID=c(rownames(geno))),
                                            pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
                               yGID <- yNA$GID
+                              ## for test set geno if provided, set to NA (remove from training set)
+                              if(!is.null(testSetGID)){
+                                yNA[yNA$GID %in% testSetGID,tr] <- NA
+                              }
                               fit <- rrBLUP::kinship.BLUP(y=yNA[[traits[f]]],
                                                           G.train=geno,
                                                           G.pred=geno, K.method="RR")$g.pred
@@ -1438,39 +1450,71 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
     K <- exp(-h*D)
     rm(D)
 
-    ## parallel processing over traits
-    out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
-                            .combine = "rbind",.packages = "BGLR") %dopar% {
-                              yNA <- merge(data.frame(GID=c(rownames(geno))),
-                                           pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
-                              p2f.temp <- paste0(p2d.temp,"/RKHS_PredAll_testSet_",f)
-                              ## fit model
-                              fit <- BGLR::BGLR(y=yNA[[traits[f]]],ETA=list(list(K=K,model='RKHS')),
-                                                nIter=nIter,burnIn=burnIn,saveAt=p2f.temp,verbose=FALSE)
-                              ## output predicted values
-                              tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,trait=traits[f],yHat=fit$yHat)
-                              return(tmp)
-                            }
+    if(is.null(p2d.temp)){
+      print(warning("No temporary directory provided, this may cause issues."))
+    }
 
-  } else if(GP.method %in% c("BayesA","BayesB")){
     ## parallel processing over traits
-    out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
-                            .combine = "rbind",.packages = "BGLR") %dopar% {
-                              yNA <- merge(data.frame(GID=c(rownames(geno))),
-                                           pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
-                              p2f.temp <- paste0(p2d.temp,"/",GP.method,"_PredAll_testSet_",f)
-                              ## fit model
-                              fit <- BGLR::BGLR(y=yNA[[traits[f]]],ETA=list(list(X=geno,model=GP.method)),
-                                                nIter=nIter,burnIn=burnIn,saveAt=p2f.temp,verbose=FALSE)
-                              ## output predicted values
-                              tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,trait=traits[f],yHat=fit$yHat)
-                              return(tmp)
-                            }
+    out <- foreach::foreach(
+      f=1:ntraits,.errorhandling = "pass",
+      .combine = "rbind",.packages = "BGLR") %dopar% {
+        yNA <- merge(data.frame(GID=c(rownames(geno))),
+                     pheno.traits[,c("GID",traits[f])],
+                     by="GID", all.x=TRUE)
+        yNA <- yNA[match(rownames(K),yNA$GID),]
+        ## if testSetGID provided, set to NA (remove from training set)
+        if(!is.null(testSetGID)){
+          yNA[yNA$GID %in% testSetGID,traits[f]] <- NA
+        }
+        stopifnot(identical(yNA$GID, rownames(geno)))
+
+        p2f.temp <- paste0(p2d.temp,"/RKHS_PredAll_testSet_",traits[f])
+        ## fit model
+        fit <- BGLR::BGLR(y=yNA[[traits[f]]],
+                          ETA=list(list(K=K,model='RKHS')),
+                          nIter=nIter,burnIn=burnIn,
+                          saveAt=p2f.temp,verbose=FALSE)
+        ## output predicted values
+        tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,
+                          trait=traits[f],yHat=fit$yHat)
+        return(tmp)
+      }
+
+  } else if(GP.method %in% c("BayesA","BayesB","BayesC")){
+    if(is.null(p2d.temp)){
+      print(warning("No temporary directory provided, this may cause issues."))
+    }
+    ## parallel processing over traits
+    out <- foreach::foreach(
+      f=1:ntraits,.errorhandling = "pass",
+      .combine = "rbind",.packages = "BGLR") %dopar% {
+        yNA <- merge(data.frame(GID=c(rownames(geno))),
+                     pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
+
+        yNA <- yNA[match(rownames(K),yNA$GID),]
+        ## if testSetGID provided, set to NA (remove from training set)
+        if(!is.null(testSetGID)){
+          yNA[yNA$GID %in% testSetGID,traits[f]] <- NA
+        }
+        stopifnot(identical(yNA$GID, rownames(geno)))
+
+        p2f.temp <- paste0(p2d.temp,"/",GP.method,"_PredAll_testSet_",traits[f])
+        ## fit model
+        fit <- BGLR::BGLR(y=yNA[[traits[f]]],
+                          ETA=list(list(X=geno,model=GP.method)),
+                          nIter=nIter,burnIn=burnIn,
+                          saveAt=p2f.temp,verbose=FALSE)
+        ## output predicted values
+        tmp <- data.frame(GID=yNA$GID, GP.method=GP.method,
+                          trait=traits[f],yHat=fit$yHat)
+        return(tmp)
+      }
   }
 
   parallel::stopCluster(cl)
   ## set the predicted values in a wide format, with one column per trait
-  all.pred <- out %>%  dplyr::select(tidyselect::all_of(c("GID","GP.method","trait","yHat"))) %>%
+  all.pred <- out %>%
+    dplyr::select(tidyselect::all_of(c("GID","GP.method","trait","yHat"))) %>%
     tidyr::pivot_wider(names_from="trait", values_from="yHat")
 
   if(!is.null(testSetGID)){
@@ -1487,18 +1531,20 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
       if(ext %in% c("csv")){
         utils::write.csv(all.pred, file=p2f.pred, row.names=FALSE)
       } else if(ext %in% c("txt","tsv")){
-        utils::write.table(file=p2f.pred, all.pred, sep="\t", row.names=FALSE, col.names=TRUE)
+        utils::write.table(file=p2f.pred, all.pred, sep="\t",
+                           row.names=FALSE, col.names=TRUE)
       } else if(ext %in% "rds"){
         saveRDS(all.pred, file=p2f.pred)
       }
     }
 
-    if(runCV){
-      return(list(obspred=gp.cv$obspred, gp.stats=gp.cv$gp.stats, all.pred=all.pred))
-    } else {
-      return(all.pred)
+  } ## end if p2f.pred
 
-    }
+  if(runCV){
+    return(list(obspred=gp.cv$obspred, gp.stats=gp.cv$gp.stats,
+                all.pred=all.pred))
+  } else {
+    return(all.pred)
   }
 }
 
@@ -1816,15 +1862,17 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
 #' @param return_table logical, whether to return the table or not, default is TRUE.
 #' @param accession_name character string, name of the column in `dat` that contains the accession name
 #' @param population_name character string, name of the column in `dat` that contains the population name
-#' @param `organization_name(s)` charac6er string, name of the column in `dat` that contains the organization name
-#' @param `synonym(s)` character string, name of the column in `dat` that contains the synonym name
-#' @param `variety(s)` character string, name of the column in `dat` that contains the variety name
-#' @param `country_of_origin(s)` character string, name of the column in `dat` that contains the country of origin
-#' @param `notes(s)` character string, name of the column in `dat` that contains the notes
-#' @param `accession_number(s)` character string, name of the column in `dat` that contains the accession number
+#' @param organization_name charac6er string, name of the column in `dat` that contains the organization name
+#' @param synonym character string, name of the column in `dat` that contains the synonym name
+#' @param variety character string, name of the column in `dat` that contains the variety name
+#' @param country_of_origin character string, name of the column in `dat` that contains the country of origin
+#' @param notes character string, name of the column in `dat` that contains the notes
+#' @param accession_number character string, name of the column in `dat` that contains the accession number
 #' @param purdy_pedigree character string, name of the column in `dat` that contains the purdy pedigree
 #' @param filial_generation character string, name of the column in `dat` that contains the filial generation
 #' @param species_name character string, name of the species, default is "Triticum aestivum" (fixed).
+#'
+#' @seealso \code{\link{create_trials_T3}}, \code{\link{create_phenot_T3}}
 #'
 #' @return a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
 #' @author Charlotte Brault
@@ -1832,9 +1880,9 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
 #' @export
 create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE,
                                  accession_name=NULL, population_name=NULL,
-                                 `organization_name(s)`=NULL, `synonym(s)`=NULL,
-                                 `variety(s)`= NULL,`country_of_origin(s)`=NULL,
-                                 `notes(s)`= NULL, `accession_number(s)`=NULL,
+                                 organization_name=NULL, synonym=NULL,
+                                 variety= NULL,country_of_origin=NULL,
+                                 notes= NULL, accession_number=NULL,
                                  purdy_pedigree=NULL,filial_generation=NULL,
                                  species_name="Triticum aestivum"){
 
@@ -1846,9 +1894,9 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
 
 
   colsFormat <- c(accession_name,population_name ,
-                  `organization_name(s)`,`synonym(s)`,
-                  `variety(s)`,`country_of_origin(s)`,
-                  `notes(s)`,`accession_number(s)` ,purdy_pedigree ,
+                  organization_name,synonym,
+                  variety,country_of_origin,
+                  notes,accession_number ,purdy_pedigree ,
                   filial_generation)
   names(colsFormat) <- c("accession_name","population_name" ,
                          "organization_name(s)","synonym(s)",
@@ -1947,9 +1995,9 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
 #' @param breeding_program character string, name of the column in `dat` that contains the breeding program, default is "Regional Scab Nursery Cooperative".
 #'
 #' @return a data frame with the trials to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
-#' @seealso [create_accessions_T3(), create_phenot_T3()]
+#' @seealso \code{\link{create_accessions_T3}}, \code{\link{create_phenot_T3}}
 #' @author Charlotte Brault
-#' @importFrom dplyr distinct relocate
+#' @importFrom dplyr distinct relocate select
 #' @export
 
 create_trials_T3 <- function(dat=NULL,
@@ -2210,7 +2258,7 @@ create_trials_T3 <- function(dat=NULL,
 #' @param p2f path to file to write the output of the function
 #' @param return_table logical, whether to return the table or not, default is TRUE.
 #' @param plot_name_col character string, name of the column in `dat` that contains the plot name, default is "plot_name"
-#' @seealso [create_accessions_T3(), create_trials_T3()]
+#' @seealso \code{\link{create_accessions_T3()}}, \code{\link{create_trials_T3()}}
 #' @return a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`.
 #' @importFrom stats na.omit
 #' @importFrom openxlsx write.xlsx
