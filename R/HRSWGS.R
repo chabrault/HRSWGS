@@ -1858,7 +1858,7 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
 #'
 #' @param dat data frame with genotype information
 #' @param checkDB logical, whether to check the T3 database with `BrAPI` package to exclude accessions already in the database, default is TRUE.
-#' @param p2f path to file to write the output of the function
+#' @param p2f path to file to write the output of the function, need to be with an xlsx or csv extension
 #' @param return_table logical, whether to return the table or not, default is TRUE.
 #' @param accession_name character string, name of the column in `dat` that contains the accession name
 #' @param population_name character string, name of the column in `dat` that contains the population name
@@ -1875,8 +1875,10 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
 #' @seealso \code{\link{create_trials_T3}}, \code{\link{create_phenot_T3}}
 #'
 #' @return a data frame with the accessions to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
-#' @author Charlotte Brault
 #' @importFrom dplyr distinct relocate
+#' @importFrom utils write.csv
+#' @importFrom tools file_ext
+#' @author Charlotte Brault
 #' @export
 create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=TRUE,
                                  accession_name=NULL, population_name=NULL,
@@ -1947,7 +1949,16 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
   }
   ## write to file
   if(!is.null(p2f)){
-    openxlsx::write.xlsx(x=T3.accession, file=p2f,colNames = TRUE)
+    if(tools::file_ext(p2f) == "xlsx"){
+      openxlsx::write.xlsx(x=T3.accession, file=p2f,colNames = TRUE)
+    } else if(tools::file_ext(p2f) %in% c("csv")){
+      utils::write.csv(file=p2f, T3.accession, sep=",",
+                       fileEncoding = "UTF-8",
+                       row.names=FALSE, col.names=TRUE)
+
+    } else {
+      stop("File extension not recognized. Use xlsx or csv.")
+    }
     print(paste0("Accessions successfully written to ",p2f))
   }
 
@@ -1996,8 +2007,10 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
 #'
 #' @return a data frame with the trials to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`
 #' @seealso \code{\link{create_accessions_T3}}, \code{\link{create_phenot_T3}}
-#' @author Charlotte Brault
 #' @importFrom dplyr distinct relocate select
+#' @importFrom utils write.csv
+#' @importFrom tools file_ext
+#' @author Charlotte Brault
 #' @export
 
 create_trials_T3 <- function(dat=NULL,
@@ -2044,7 +2057,7 @@ create_trials_T3 <- function(dat=NULL,
            "ND"=c("Fargo","Prosper","Langdon","Carrington", "Minot","Casselton",
                   "Williston","Hettinger","Thompson","Berthold","Dickinson","Forman"),
            "SD"=c("Brookings", "Selby","Groton","Aberdeen","Madison","Highmore",
-                  "Watertown","Redfield",),
+                  "Watertown","Redfield"),
            "MB, Canada"=c("Morden","Glenlea", "Winnipeg"),
            "NE"=c("Sidney_NE","Mead")
       )
@@ -2070,7 +2083,12 @@ create_trials_T3 <- function(dat=NULL,
 
   colsTrial <- stats::na.omit(colsFormat)
 
-  stopifnot(all(colsTrial %in% colnames(dat)))
+  ## verify that all columns provided exist in the table
+  if(!all(colsTrial %in% colnames(dat))){
+    sdf <- setdiff(colsTrial, colnames(dat))
+    print(paste0("Columns not found in the data: ", paste(sdf, collapse=", ")))
+  }
+
   dat.trial <- dat %>%
     dplyr::select(tidyselect::all_of(c(keepID,colsTrial))) %>%
     dplyr::distinct()
@@ -2105,37 +2123,6 @@ create_trials_T3 <- function(dat=NULL,
       }
     }
   }
-
-  # ## Minnesota
-  # MNlocs <- c("St. Paul","Crookston", "Morris")
-  # ## North Dakota
-  # NDlocs <- c("Fargo","Prosper","Langdon","Carrington", "Minot")
-  # ## South Dakota
-  # SDlocs <- c("Brookings", "Selby","Groton")
-  # ## Manitoba
-  # MBlocs <- c("Morden","Glenlea", "Winnipeg")
-  #
-  # allLocs <- c(MNlocs, NDlocs, SDlocs, MBlocs)
-  # ## add suffix with state information after location name
-  # if(length(setdiff(unique(dat.trial[[location]]), allLocs)) > 0){
-  #   print(paste("Missing locations",setdiff(unique(dat.trial[[location]]), allLocs)))
-  # }
-  # idxMN <- which(dat.trial[[location]] %in% MNlocs)
-  # if(length(idxMN) >0){
-  #   dat.trial[[location]][idxMN] <- paste0(dat.trial[[location]][idxMN],", MN")
-  # }
-  # idxND <- which(dat.trial[[location]] %in% NDlocs)
-  # if(length(idxND) >0){
-  #   dat.trial[[location]][idxND] <- paste0(dat.trial[[location]][idxND],", ND")
-  # }
-  # idxSD <- which(dat.trial[[location]] %in% SDlocs)
-  # if(length(idxSD) >0){
-  #   dat.trial[[location]][idxSD] <- paste0(dat.trial[[location]][idxSD],", SD")
-  # }
-  # idxMB <- which(dat.trial[[location]] %in% MBlocs)
-  # if(length(idxMB) >0){
-  #   dat.trial[[location]][idxMB] <- paste0(dat.trial[[location]][idxMB],", MB, Canada")
-  # }
 
   idxMiss <- grep(pattern=", ", dat.trial[[location]], invert = TRUE)
   if(length(idxMiss) > 0){
@@ -2176,13 +2163,16 @@ create_trials_T3 <- function(dat=NULL,
 
 
   ## format planting and harvest date columns in date format
+  ### date should be in format yyyy-mm-dd or empty
   if(!is.na(planting_date)){
-    dat.trial$planting_date <- as.Date(dat.trial$planting_date)
+    dat.trial$planting_date <- as.character(as.Date(dat.trial$planting_date,format="%Y-%m-%d"))
+    dat.trial$planting_date[is.na(dat.trial$planting_date)] <- ""
   } else{
     dat.trial$planting_date <- ""
   }
   if(!is.na(harvest_date)){
-    dat.trial$harvest_date <- as.Date(dat.trial$harvest_date)
+    dat.trial$harvest_date <- as.character(as.Date(dat.trial$harvest_date,format="%Y-%m-%d"))
+    dat.trial$harvest_date[is.na(dat.trial$harvest_date)] <- ""
   } else{
     dat.trial$harvest_date <- ""
   }
@@ -2207,10 +2197,13 @@ create_trials_T3 <- function(dat=NULL,
   ## for control column, replace TRUE/FALSE with 1/0
   if(!is.na(colsFormat["is_a_control"])){
     if(is.logical(dat.trial$is_a_control)){
-      dat.trial$is_a_control <- plyr::mapvalues(dat.trial$is_a_control,
-                                                from=c(TRUE,FALSE),to=c(1,0))
+      dat.trial$is_a_control <- dplyr::case_match(
+        dat.trial$is_a_control, TRUE ~ 1,FALSE ~ 0)
+      # dat.trial$is_a_control <- plyr::mapvalues(dat.trial$is_a_control,
+      #                                           from=c(TRUE,FALSE),to=c(1,0))
     }
   }
+
 
 
   colN <- c("trial_name","breeding_program","location","year",
@@ -2240,8 +2233,15 @@ create_trials_T3 <- function(dat=NULL,
             T3.trial$block_number != "")
 
   if(!is.null(p2f)){
-    openxlsx::write.xlsx(x=T3.trial[,!colnames(T3.trial) %in% keepID],
-                         file=p2f,colNames = TRUE)
+    if(tools::file_ext(p2f) == "xlsx"){
+      openxlsx::write.xlsx(x=T3.trial[,!colnames(T3.trial) %in% keepID],
+                           file=p2f,colNames = TRUE)
+    } else if(tools::file_ext(p2f) == "csv"){
+      utils::write.csv(x=T3.trial[,!colnames(T3.trial) %in% keepID],
+                       file=p2f, fileEncoding="UTF-8", row.names = FALSE)
+    } else {
+      stop("File extension must be either xlsx or csv")
+    }
     print(paste0("Trials successfully written to ",p2f))
   }
   if(return_table){
@@ -2255,7 +2255,7 @@ create_trials_T3 <- function(dat=NULL,
 #'
 #' @param dat data frame with phenotypic data, containing at least the plot name and the traits
 #' @param df_corresp_trait data frame with the correspondence between the column names in `dat` and the traits in T3, must countain the columns `T3_trait` and `corresp_col`.
-#' @param p2f path to file to write the output of the function
+#' @param p2f path to file to write the output of the function, need to be with an xlsx or csv extension.
 #' @param return_table logical, whether to return the table or not, default is TRUE.
 #' @param plot_name_col character string, name of the column in `dat` that contains the plot name, default is "plot_name"
 #' @seealso \code{\link{create_accessions_T3()}}, \code{\link{create_trials_T3()}}
@@ -2263,6 +2263,9 @@ create_trials_T3 <- function(dat=NULL,
 #' @importFrom stats na.omit
 #' @importFrom openxlsx write.xlsx
 #' @importFrom dplyr select distinct
+#' @importFrom utils write.csv
+#' @importFrom tools file_ext
+#' @author Charlotte Brault
 #' @export
 
 create_phenot_T3 <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
@@ -2299,7 +2302,13 @@ create_phenot_T3 <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
 
   ## export to Excel file
   if(!is.null(p2f)){
-    openxlsx::write.xlsx(x=T3.phenot, file=p2f,colNames = TRUE)
+    if(tools::file_ext(p2f) == "xlsx"){
+      openxlsx::write.xlsx(x=T3.phenot, file=p2f,colNames = TRUE)
+    } else if(tools::file_ext(p2f) == "csv"){
+      utils::write.csv(x=T3.phenot, file=p2f, fileEncoding="UTF-8", row.names = FALSE)
+    } else {
+      stop("File extension must be either xlsx or csv")
+    }
     print(paste0("Phenotypes successfully written to ",p2f," for ",
                  length(traits)," traits"))
   }
