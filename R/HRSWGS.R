@@ -679,6 +679,11 @@ format_phenot <- function(p2d, years, locs, traits, cols2rem=NULL,distMatchTrait
 #' @return data frame with 0/1/2 values from the curated vcf file, with genotypes in row and markers in columns.
 #' @author Charlotte Brault
 #' @seealso [format_names()], [getGenoTas_to_DF()], [concordance_match_name()]
+#' @importFrom vcfR read.vcfR extract.gt getFIX
+#' @importFrom methods new
+#' @importFrom dplyr arrange filter mutate select distinct
+#' @importFrom tibble as_tibble
+
 #' @export
 
 format_curate_vcf <- function(vcf.p2f=NULL,
@@ -977,6 +982,13 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     if(is.null(p2f.export.vcf)){
       stop("Need to export vcf file to perform imputation")
     }
+    ## load rTASSEL and rJava packages
+    if(!requireNamespace("rTASSEL", quietly = TRUE)){
+      stop("Please install rTASSEL package to perform kNNI imputation")
+    }
+    if(!requireNamespace("rJava", quietly = TRUE)){
+      stop("Please install rJava package to perform kNNI imputation")
+    }
 
     tasGenoVCF <- rTASSEL::readGenotypeTableFromPath(path = p2f.export.vcf)
     ## use KNNI as imputation method, using default parameters
@@ -1075,10 +1087,14 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 #'
 #' @param tasGeno Genotypic object from TASSEL
 #'
+#' @importFrom SummarizedExperiment assays colData
 #' @returns matrix of genotypic data in 0/1/2 data frame format
 #' @keywords internal
 #' @author Vishnu Ramasubramanian
 getGenoTas_to_DF <- function(tasGeno){
+  requireNamespace("rTASSEL", quietly = TRUE)
+  requireNamespace("rJava", quietly = TRUE)
+
   tasSumExp <- rTASSEL::getSumExpFromGenotypeTable(tasObj=tasGeno)
   tasGenoDF <- (SummarizedExperiment::assays(tasSumExp)[[1]])
   colnames(tasGenoDF) <- SummarizedExperiment::colData(tasSumExp)[,"Sample"]
@@ -1090,7 +1106,8 @@ getGenoTas_to_DF <- function(tasGeno){
     rTASSEL:::tableReportToDF() %>% as.data.frame()
 
   varSplit <- strsplit(tableReport[,"VARIANT"],"/")
-  varSplitTab <- cbind.data.frame(unlist(lapply(varSplit,function(x) x[1])),unlist(lapply(varSplit,function(x) x[2])))
+  varSplitTab <- cbind.data.frame(unlist(lapply(varSplit,function(x) x[1])),
+                                  unlist(lapply(varSplit,function(x) x[2])))
 
   gt2d_tasGeno <- tasGenoDF
   rownames(gt2d_tasGeno) <- tableReport$Name
@@ -1332,7 +1349,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
     if(ext %in% c("csv")){
       utils::write.csv(gp.stats, file=p2f.stats, row.names=FALSE)
     } else if(ext %in% c("txt","tsv")){
-      utils::write.table(file=p2f.stats, gp.stats, sep="\t", row.names=FALSE, col.names=TRUE)
+      utils::write.table(file=p2f.stats, gp.stats, sep="\t", row.names=FALSE)
     } else if(ext %in% "rds"){
       saveRDS(gp.stats, file=p2f.stats)
     }
@@ -1532,7 +1549,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
         utils::write.csv(all.pred, file=p2f.pred, row.names=FALSE)
       } else if(ext %in% c("txt","tsv")){
         utils::write.table(file=p2f.pred, all.pred, sep="\t",
-                           row.names=FALSE, col.names=TRUE)
+                           row.names=FALSE)
       } else if(ext %in% "rds"){
         saveRDS(all.pred, file=p2f.pred)
       }
@@ -1671,7 +1688,9 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 #' @param selGen character vector of selected genotypes to highlight in the plot
 #' @param colorCol character vector of column name for color (default is NULL)
 #'
-#' @importFrom ggplot2 aes geom_density geom_area geom_vline labs ggplot
+#' @importFrom ggplot2 aes geom_density geom_area geom_vline labs ggplot geom_rug scale_fill_viridis_d scale_color_viridis_d
+#' @importFrom ggrepel geom_label_repel
+#' @importFrom bigstatsr theme_bigstatsr
 #' @returns a ggplot object
 #' @export
 plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=NULL){
@@ -1734,8 +1753,8 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
                                   force_pull = 0.1,size=3,
                                   vjust=0.6, max.overlaps = Inf,
                                   fontface="bold",alpha=0.7) +
-        viridis::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
-        viridis::scale_color_viridis_d(begin=0.35, direction=1,option="H")
+        ggplot2::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
+        ggplot2::scale_color_viridis_d(begin=0.35, direction=1,option="H")
     } else {
       p <- p +
         ggrepel::geom_label_repel(data=dat.sel,
@@ -1745,8 +1764,8 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
                                   force_pull = 0.1,size=3,
                                   vjust=0.6, max.overlaps = Inf,
                                   fontface="bold",alpha=0.7)+
-        viridis::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
-        viridis::scale_color_viridis_d(begin=0.35, direction=1,option="H")
+        ggplot2::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
+        ggplot2::scale_color_viridis_d(begin=0.35, direction=1,option="H")
     } ## end if colorCol
   } ## end if selGen
   plot(p)
@@ -1765,6 +1784,7 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
 #' @author Charlotte Brault
 #' @importFrom shiny shinyApp fluidPage titlePanel downloadButton reactive
 #' @importFrom DT datatable formatSignif formatStyle styleInterval DTOutput renderDT
+#' @importFrom htmlwidgets JS
 #' @export
 
 SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL){
@@ -1952,9 +1972,8 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
     if(tools::file_ext(p2f) == "xlsx"){
       openxlsx::write.xlsx(x=T3.accession, file=p2f,colNames = TRUE)
     } else if(tools::file_ext(p2f) %in% c("csv")){
-      utils::write.csv(file=p2f, T3.accession, sep=",",
-                       fileEncoding = "UTF-8",
-                       row.names=FALSE, col.names=TRUE)
+      utils::write.csv(file=p2f, T3.accession,
+                       fileEncoding = "UTF-8", row.names=FALSE)
 
     } else {
       stop("File extension not recognized. Use xlsx or csv.")
@@ -2108,6 +2127,7 @@ create_trials_T3 <- function(dat=NULL,
     dat.trial <-  purrr::map_dfr(split(dat.trial, dat.trial$trial_name),
                                  function(x) cbind(x, plot_number=seq(1000,length.out=nrow(x))))
   }
+
   ## add plot name by pasting trial name and plot number
   dat.trial$plot_name <- paste0(dat.trial$trial_name,"_PLOT",
                                 dat.trial$plot_number)
@@ -2258,7 +2278,7 @@ create_trials_T3 <- function(dat=NULL,
 #' @param p2f path to file to write the output of the function, need to be with an xlsx or csv extension.
 #' @param return_table logical, whether to return the table or not, default is TRUE.
 #' @param plot_name_col character string, name of the column in `dat` that contains the plot name, default is "plot_name"
-#' @seealso \code{\link{create_accessions_T3()}}, \code{\link{create_trials_T3()}}
+#' @seealso \code{\link{create_accessions_T3}}, \code{\link{create_trials_T3}}
 #' @return a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise a file is written to the path `p2f`.
 #' @importFrom stats na.omit
 #' @importFrom openxlsx write.xlsx

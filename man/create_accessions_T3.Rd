@@ -27,7 +27,7 @@ create_accessions_T3(
 
 \item{checkDB}{logical, whether to check the T3 database with \code{BrAPI} package to exclude accessions already in the database, default is TRUE.}
 
-\item{p2f}{path to file to write the output of the function}
+\item{p2f}{path to file to write the output of the function, need to be with an xlsx or csv extension}
 
 \item{return_table}{logical, whether to return the table or not, default is TRUE.}
 

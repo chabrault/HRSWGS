@@ -17,7 +17,7 @@ create_phenot_T3(
 
 \item{df_corresp_trait}{data frame with the correspondence between the column names in \code{dat} and the traits in T3, must countain the columns \code{T3_trait} and \code{corresp_col}.}
 
-\item{p2f}{path to file to write the output of the function}
+\item{p2f}{path to file to write the output of the function, need to be with an xlsx or csv extension.}
 
 \item{return_table}{logical, whether to return the table or not, default is TRUE.}
 
@@ -30,5 +30,8 @@ a data frame with the phenotypes to add to T3 if return_table is TRUE, otherwise
 Create table and file to add phenotype data in T3
 }
 \seealso{
-\code{\link{create_accessions_T3()}}, \code{\link{create_trials_T3()}}
+\code{\link{create_accessions_T3}}, \code{\link{create_trials_T3}}
+}
+\author{
+Charlotte Brault
 }
