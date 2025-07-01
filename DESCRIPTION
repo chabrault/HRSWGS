@@ -19,7 +19,10 @@ URL: https://chabrault.github.io/HRSWGS/
 Suggests: 
     testthat (>= 3.0.0),
     roxygen2,
-    devtools
+    devtools,
+    rTASSEL,
+    rJava,
+    BrAPI
 Config/testthat/edition: 3
 Imports: 
       ggplot2,

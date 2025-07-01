@@ -155,53 +155,71 @@ getFolds <- function(index, nb.folds=5, seed=NULL){
 #' @return list of initial and corrected names
 #' @export
 
-format_names <- function(names, toupper=TRUE, dashToUnderscore=FALSE,
-                         pedigree=FALSE,verbose=FALSE){
+format_names <- function(names, toupper = TRUE, dashToUnderscore = FALSE,
+                         pedigree = FALSE, verbose = FALSE) {
   names_init <- names
+
+  # Define special Unicode characters explicitly
+  u2019 <- intToUtf8(0x2019) # ’
+  u00A7 <- intToUtf8(0x00A7) # §
+  u03C6 <- intToUtf8(0x03C6) # φ
+  u00B6 <- intToUtf8(0x00B6) # ¶
+  u2014 <- intToUtf8(0x2014) # —
+
   ## patterns to remove
-  pat = " \\(S check\\)| \\(MR check\\)| = ALVORADA|\'S\"|’S’|'S'|’s’|\\*|§"
-  names1 = stringr::str_remove_all(names_init, pattern=pat)
-  names1 = stringr::str_remove_all(names1, pattern= "\u2019S\u2019")
-  names2 = stringr::str_remove_all(names1,pattern ='[_§\u03c6*¶]+$')
-  names2 = stringr::str_remove_all(names2,pattern ='\'')
-  names3 = stringr::str_remove_all(names2, pattern=" ")
-  ## remove white spaces
-  names4 <- stringr::str_trim(names3)
-  ## remove names beginning or ending with underscore
-  ### word beginning with _
-  names5 <- stringr::str_remove(names4, "^_")
-  ### word ending with __ (two underscores)
-  names6 <- stringr::str_remove(names5, "_$")
+  pat <- paste0(" \\(S check\\)| \\(MR check\\)| = ALVORADA|'S\"|",
+                u2019, "S", u2019, "|'S'|", u2019, "s", u2019,
+                "|\\*|", u00A7)
+  names1 <- stringr::str_remove_all(names_init, pattern = pat)
+
+  # Remove trailing special symbols
+  pat_end <- paste0("[_", u00A7, u03C6, "\\*", u00B6, "]+$")
+  names2 <- stringr::str_remove_all(names1, pattern = pat_end)
+
+  # Remove single quotes
+  names3 <- stringr::str_remove_all(names2, pattern = "'")
+
+  # Remove all spaces
+  names4 <- stringr::str_remove_all(names3, pattern = " ")
+
+  # Trim whitespace just in case
+  names5 <- stringr::str_trim(names4)
+
+  # Remove leading underscore
+  names6 <- stringr::str_remove(names5, "^_")
+
+  # Remove trailing underscores
   names7 <- stringr::str_remove(names6, "_$")
+  names8 <- stringr::str_remove(names7, "_$")
 
-  ## patterns to replace by underscore
-  if(dashToUnderscore){
-    names8 = stringr::str_replace_all(names7,"\u2014","_")#"–"
-    names9 = stringr::str_replace_all(names8,"-","_")
-  } else{
-    names9 = stringr::str_replace_all(names7,"\u2014","-")#"–"
-  }
-
-  if(!pedigree){
-    names10 = stringr::str_replace_all(names9,"/","_")
+  ## Replace dash / long dash
+  if (dashToUnderscore) {
+    names9 <- stringr::str_replace_all(names8, u2014, "_")
+    names10 <- stringr::str_replace_all(names9, "-", "_")
   } else {
-    names10=names9
+    names10 <- stringr::str_replace_all(names8, u2014, "-")
   }
 
-  ## Set to upper letters
-  if(toupper){
-    names10 <- toupper(names10)
+  ## Replace slash by underscore unless pedigree
+  if (!pedigree) {
+    names11 <- stringr::str_replace_all(names10, "/", "_")
+  } else {
+    names11 <- names10
   }
 
-  ## output initial and corrected names
-  out <- data.frame(initial.name=names_init, corrected.names=names10)
-  if(verbose){
-    print(paste0(length(unique(names_init))," initial unique names and ",
-                 length(unique(names10)), " final unique names"))
+  ## Set to upper case
+  if (toupper) {
+    names11 <- toupper(names11)
   }
 
-  return(list(init=names_init, corrected=names10,df=out))
+  ## Output initial and corrected names
+  out <- data.frame(initial.name = names_init, corrected.names = names11)
+  if (verbose) {
+    cat(length(unique(names_init)), "initial unique names and",
+        length(unique(names11)), "final unique names\n")
+  }
 
+  return(list(init = names_init, corrected = names11, df = out))
 }
 
 
@@ -1092,8 +1110,14 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 #' @keywords internal
 #' @author Vishnu Ramasubramanian
 getGenoTas_to_DF <- function(tasGeno){
-  requireNamespace("rTASSEL", quietly = TRUE)
-  requireNamespace("rJava", quietly = TRUE)
+  ## load rTASSEL and rJava packages
+  if(!requireNamespace("rTASSEL", quietly = TRUE)){
+    stop("Please install rTASSEL package to perform kNNI imputation")
+  }
+  if(!requireNamespace("rJava", quietly = TRUE)){
+    stop("Please install rJava package to perform kNNI imputation")
+  }
+
 
   tasSumExp <- rTASSEL::getSumExpFromGenotypeTable(tasObj=tasGeno)
   tasGenoDF <- (SummarizedExperiment::assays(tasSumExp)[[1]])
@@ -1102,8 +1126,8 @@ getGenoTas_to_DF <- function(tasGeno){
   ### Extract Table Report DF
   tableReport <- rJava::new(
     rJava::J("net.maizegenetics.dna.map.PositionListTableReport"),
-    tasGeno %>% rTASSEL:::getPositionList()) %>%
-    rTASSEL:::tableReportToDF() %>% as.data.frame()
+    tasGeno %>% rTASSEL::positionList()) %>%
+    rTASSEL::tableReport() %>% as.data.frame()
 
   varSplit <- strsplit(tableReport[,"VARIANT"],"/")
   varSplitTab <- cbind.data.frame(unlist(lapply(varSplit,function(x) x[1])),
@@ -2076,12 +2100,12 @@ create_trials_T3 <- function(dat=NULL,
            "ND"=c("Fargo","Prosper","Langdon","Carrington", "Minot","Casselton",
                   "Williston","Hettinger","Thompson","Berthold","Dickinson","Forman"),
            "SD"=c("Brookings", "Selby","Groton","Aberdeen","Madison","Highmore",
-                  "Watertown","Redfield"),
+                  "Letcher","Faulkton",
+                  "Watertown","Redfield","Miller","Agar","Claire City","Selby","Dakota Lakes"),
            "MB, Canada"=c("Morden","Glenlea", "Winnipeg"),
            "NE"=c("Sidney_NE","Mead")
       )
   }
-
 
   ## format the columns that correspond to columns in dat.trial
   colsFormat <- c(year,location,accession_name,plot_number,
@@ -2112,12 +2136,13 @@ create_trials_T3 <- function(dat=NULL,
     dplyr::select(tidyselect::all_of(c(keepID,colsTrial))) %>%
     dplyr::distinct()
 
+
   colnames(dat.trial) <- plyr::mapvalues(colnames(dat.trial), from=stats::na.omit(colsFormat),
                                          to=names(stats::na.omit(colsFormat)), warn_missing = FALSE)
 
 
   ## define a unique id for trial name: paste location and year
-  dat.trial$trial_name <- paste0(prefix_BP,"_",dat.trial[[year]],"_",dat.trial[[location]])
+  dat.trial$trial_name <- paste0(prefix_BP,"_",dat.trial$year,"_",dat.trial$location)
   ### Replace string St. Paul by StPaul
   dat.trial$trial_name <- gsub(pattern="St. ", replacement="St", x=dat.trial$trial_name)
 
@@ -2137,16 +2162,16 @@ create_trials_T3 <- function(dat=NULL,
   for(st in names(location_state_corresp)){
     locs <- location_state_corresp[[st]]
     if(length(locs) > 0){
-      idx <- which(dat.trial[[location]] %in% locs)
+      idx <- which(dat.trial$location %in% locs)
       if(length(idx) > 0){
-        dat.trial[[location]][idx] <- paste0(dat.trial[[location]][idx],", ",st)
+        dat.trial$location[idx] <- paste0(dat.trial$location[idx],", ",st)
       }
     }
   }
 
-  idxMiss <- grep(pattern=", ", dat.trial[[location]], invert = TRUE)
+  idxMiss <- grep(pattern=", ", dat.trial$location, invert = TRUE)
   if(length(idxMiss) > 0){
-    print(paste("Missing location states: ",unique(dat.trial[[location]][idxMiss])))
+    print(paste("Missing location states: ",unique(dat.trial$location[idxMiss])))
   }
 
 
@@ -2267,9 +2292,7 @@ create_trials_T3 <- function(dat=NULL,
   if(return_table){
     return(T3.trial)
   }
-
 }
-
 
 #' Create table and file to add phenotype data in T3
 #'
