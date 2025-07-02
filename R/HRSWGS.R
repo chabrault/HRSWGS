@@ -961,12 +961,12 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     #### define a default mrk.info data frame if not provided
     if(is.null(vcf.p2f) & is.null(mrk.info)){
       chr_pos <- rownames(vcf.num)
-      mrk.info <- as.matrix(data.frame(CHROM=unlist(lapply(strsplit(chr_pos,"_"),function(x) x[1])),
-                                       POS=unlist(lapply(strsplit(chr_pos,"_"),function(x) x[2])),
-                                       ID=chr_pos,
-                                       REF="A",ALT="T",
-                                       QUAL=".",FILTER="PASS",INFO=".",
-                                       FORMAT="GT"))
+      mrk.info <- data.frame(CHROM=unlist(lapply(strsplit(chr_pos,"_"),function(x) x[1])),
+                             POS=unlist(lapply(strsplit(chr_pos,"_"),function(x) x[2])),
+                             ID=chr_pos,
+                             REF="A",ALT="T",
+                             QUAL=".",FILTER="PASS",INFO=".",
+                             FORMAT="GT")
       mrk.info$CHROM <- gsub("Chr","chr",mrk.info$CHROM)
 
     } else {
