@@ -2339,9 +2339,11 @@ create_phenot_T3 <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
   ## verify some units
   idxPerc <- grep("%",colnames(T3.phenot))
 
-  stopifnot(all(apply(T3.phenot[,idxPerc], 2, min, na.rm=T) >= 0),
-            all(apply(T3.phenot[,idxPerc], 2, min, na.rm=T) <= 100),
-            all(apply(T3.phenot[,traits],2, is.numeric)))
+  if(length(idxPerc) > 0){
+    stopifnot(all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, min, na.rm=T) >= 0),
+              all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, min, na.rm=T) <= 100),
+              all(apply(T3.phenot[,traits,drop=FALSE],2, is.numeric)))
+  }
 
   ## export to Excel file
   if(!is.null(p2f)){
