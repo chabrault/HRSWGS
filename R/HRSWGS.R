@@ -2008,7 +2008,6 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
   if(return_table){
     return(T3.accession)
   }
-
 }
 
 
@@ -2025,6 +2024,7 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
 #' @param year character string, name of the column in `dat` that contains the year, mandatory.
 #' @param location character string, name of the column in `dat` that contains the location, mandatory.
 #' @param accession_name character string, name of the column in `dat` that contains the accession name, mandatory.
+#' @param trial_name character string, name of the column in `dat` that contains the trial name, if not present, it is computed as `paste0(prefix_BP,"_",year,"_",location)`.
 #' @param transplanting_date character string, name of the column in `dat` that contains the transplanting date.
 #' @param plot_number character string, name of the column in `dat` that contains the plot number. If not present, increasing number from 1000.
 #' @param planting_date character string, name of the column in `dat` that contains the planting date.
@@ -2044,7 +2044,10 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
 #' @param weight_gram_seed_per_plot character string, name of the column in `dat` that contains the weight of seed per plot in grams.
 #' @param is_private character string, name of the column in `dat` that contains the private status, set as 1 if private.
 #' @param design_type character string, name of the column in `dat` that contains the design type, default is "RCBD".
-#' @param trial_type character string, name of the column in `dat` that contains the trial type, default is "phenotyping_trial".
+#' @param trial_type character string, name of the column in `dat` that contains the trial type, default is "phenotyping_trial". Should be one of: Seedling Nursery,
+#'  phenotyping_trial, Advanced Yield Trial, Preliminary Yield Trial, Uniform Yield Trial,
+#'  Variety Release Trial, Clonal Evaluation, genetic_gain_trial, storage_trial, heterosis_trial,
+#' health_status_trial, grafting_trial, Screen House, Seed Multiplication, crossing_block_trial, Specialty Trial
 #' @param description character string, name of the column in `dat` that contains the description of the trial, default is "Cooperative nursery of scab trials".
 #' @param breeding_program character string, name of the column in `dat` that contains the breeding program, default is "Regional Scab Nursery Cooperative".
 #'
@@ -2065,6 +2068,7 @@ create_trials_T3 <- function(dat=NULL,
                              year=NULL,
                              location=NULL,
                              accession_name=NULL,
+                             trial_name=NULL,
                              transplanting_date=NA,
                              plot_number=NA,
                              planting_date=NA,
@@ -2108,19 +2112,19 @@ create_trials_T3 <- function(dat=NULL,
   }
 
   ## format the columns that correspond to columns in dat.trial
-  colsFormat <- c(year,location,accession_name,plot_number,
+  colsFormat <- c(year,location,accession_name,trial_name,plot_number,
                   planting_date, harvest_date,transplanting_date,
                   block_number, is_a_control, rep_number, range_number,
                   row_number, col_number, plot_width, plot_length, field_size,
                   seedlot_name,num_seed_per_plot,
-                  weight_gram_seed_per_plot,is_private,description)
-  names(colsFormat) <- c("year","location","accession_name","plot_number",
+                  weight_gram_seed_per_plot,is_private,description,trial_type)
+  names(colsFormat) <- c("year","location","accession_name","trial_name","plot_number",
                          "planting_date", "harvest_date","transplanting_date",
                          "block_number", "is_a_control", "rep_number",
                          "range_number","row_number", "col_number",
                          "plot_width", "plot_length", "field_size",
                          "seedlot_name","num_seed_per_plot",
-                         "weight_gram_seed_per_plot","is_private","description")
+                         "weight_gram_seed_per_plot","is_private","description","trial_type")
 
 
 
@@ -2142,9 +2146,11 @@ create_trials_T3 <- function(dat=NULL,
 
 
   ## define a unique id for trial name: paste location and year
-  dat.trial$trial_name <- paste0(prefix_BP,"_",dat.trial$year,"_",dat.trial$location)
-  ### Replace string St. Paul by StPaul
-  dat.trial$trial_name <- gsub(pattern="St. ", replacement="St", x=dat.trial$trial_name)
+  if(is.null(trial_name)){
+    dat.trial$trial_name <- paste0(prefix_BP,"_",dat.trial$year,"_",dat.trial$location)
+    ### Replace string St. Paul by StPaul
+    dat.trial$trial_name <- gsub(pattern="St. ", replacement="St", x=dat.trial$trial_name)
+  }
 
 
   ## to execute only if plot number is not available: compute it as sequential number
@@ -2262,8 +2268,9 @@ create_trials_T3 <- function(dat=NULL,
 
   T3.trial <- cbind(dat.trial,#[,!colnames(dat.trial) %in% "ID"],
                     breeding_program=breeding_program,
-                    design_type=design_type,#description=description,
-                    trial_type=trial_type)
+                    design_type=design_type#,#description=description,
+                    # trial_type=trial_type
+  )
 
   ## reorder columns
   stopifnot(all(colnames(T3.trial) %in% colN),
@@ -2293,6 +2300,7 @@ create_trials_T3 <- function(dat=NULL,
     return(T3.trial)
   }
 }
+
 
 #' Create table and file to add phenotype data in T3
 #'
@@ -2341,7 +2349,7 @@ create_phenot_T3 <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
 
   if(length(idxPerc) > 0){
     stopifnot(all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, min, na.rm=T) >= 0),
-              all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, min, na.rm=T) <= 100),
+              all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, max, na.rm=T) <= 100),
               all(apply(T3.phenot[,traits,drop=FALSE],2, is.numeric)))
   }
 
