@@ -888,14 +888,6 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 
   ## 3. Curate: remove SNPs/ genos with too many missing data
 
-  # remove individuals with too many NA
-  gen.miss <- apply(vcf.file, 2, function(x) sum(is.na(x)))
-  geno2rem <- names(gen.miss)[gen.miss > thresh.NA.ind*nrow(vcf.file)]
-  if(verbose > 0){
-    print(paste0("Removed ",length(geno2rem)," individuals with too many missing data"))
-  }
-  vcf.file <- vcf.file[,!colnames(vcf.file) %in% geno2rem]
-
   ### remove markers with too many NA
   snp.miss <- apply(vcf.file, 1, function(x) sum(is.na(x)))
   snp2rem <- names(snp.miss)[snp.miss > thresh.NA.mrk*ncol(vcf.file)]
@@ -903,6 +895,22 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     print(paste0("Removed ",length(snp2rem)," markers with too many missing data"))
   }
   vcf.file <- vcf.file[!rownames(vcf.file) %in% snp2rem,]
+  if(nrow(vcf.file) == 0){
+    stop("No markers left after removing markers with too many missing data")
+  }
+
+  ### remove individuals with too many NA
+  gen.miss <- apply(vcf.file, 2, function(x) sum(is.na(x)))
+  geno2rem <- names(gen.miss)[gen.miss > thresh.NA.ind*nrow(vcf.file)]
+  if(verbose > 0){
+    print(paste0("Removed ",length(geno2rem)," individuals with too many missing data"))
+  }
+  vcf.file <- vcf.file[,!colnames(vcf.file) %in% geno2rem]
+  if(ncol(vcf.file) < 4){
+    stop("No genotypes left after removing genotypes with too many missing data")
+  }
+
+
 
   ## Remove non-polymorphic markers
   if(remove.nonPolyMrk){
