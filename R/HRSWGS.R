@@ -777,8 +777,12 @@ format_curate_vcf <- function(vcf.p2f=NULL,
   ### replace multi-allelic marker by mono-allelic, i.e., "2/2"" by "1/1"
   # vcf.file[,3:ncol(vcf.file)] <- as.data.frame(apply(vcf.file[,3:ncol(vcf.file)],2, function(x)
   #   gsub(pattern="2/2",x=x,replacement="1/1")))
-  vcf.file[,3:ncol(vcf.file)] <- as.data.frame(apply(vcf.file[,3:ncol(vcf.file)],2, function(x)
-    gsub(pattern="2",x=x,replacement="1")))
+  vcf.file[,3:ncol(vcf.file)] <- as.data.frame(apply(vcf.file[,3:ncol(vcf.file)],
+                                                     2, function(x){
+                                                       gsub(pattern="2/2",x=x,replacement="1/1")
+                                                       gsub(pattern="0/2",x=x,replacement="0/1")
+                                                       gsub(pattern="2/0",x=x,replacement="1/0")
+                                                     }))
   ## set position as numeric
   vcf.file$POS <- as.numeric(stringr::str_trim(vcf.file$POS))
 
