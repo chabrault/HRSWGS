@@ -1195,7 +1195,14 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                              "BayesA","BayesB","LASSO"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno))
+
+  ## format inputs
   geno <- as.matrix(geno)
+  pheno <- as.data.frame(pheno)
+  int.geno <- intersect(rownames(geno),pheno$GID)
+  geno <- geno[int.geno,]
+  pheno <- pheno[match(int.geno, pheno$GID),c("GID",traits)]
+
   # prepare outputs
   ## create a data frame to store accuracy
   gp.stats <- expand.grid(trait=traits, rep=seq(nreps), corP=NA,
@@ -1203,6 +1210,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                           nb.genos.VS=NA, nb.snps=ncol(geno))
   ## list to store observed / predicted breeding values
   pred.list <- list()
+
 
   ## for loop across traits
   for(tr in traits){
