@@ -2,10 +2,16 @@
 % Please edit documentation in R/HRSWGS.R
 \name{plotDistrib_selGen}
 \alias{plotDistrib_selGen}
-\title{Plot distribution of breeding values
-Plot distribution of breeding values for each trait and add position of selected genotypes}
+\title{Plot distribution of breeding values for each trait and add position of selected genotypes}
 \usage{
-plotDistrib_selGen(BV, trait, genoCol = "GID", selGen = NULL, colorCol = NULL)
+plotDistrib_selGen(
+  BV,
+  trait,
+  genoCol = "GID",
+  selGen = NULL,
+  colorCol = NULL,
+  direction.pal = -1
+)
 }
 \arguments{
 \item{BV}{data frame with breeding values, with GID in rows and traits in columns}
@@ -17,11 +23,12 @@ plotDistrib_selGen(BV, trait, genoCol = "GID", selGen = NULL, colorCol = NULL)
 \item{selGen}{character vector of selected genotypes to highlight in the plot}
 
 \item{colorCol}{character vector of column name for color (default is NULL)}
+
+\item{direction.pal}{numeric, direction of the color palette, either 1 or -1 (default is -1)}
 }
 \value{
 a ggplot object
 }
 \description{
-Plot distribution of breeding values
 Plot distribution of breeding values for each trait and add position of selected genotypes
 }

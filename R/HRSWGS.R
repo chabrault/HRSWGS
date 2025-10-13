@@ -779,9 +779,9 @@ format_curate_vcf <- function(vcf.p2f=NULL,
   #   gsub(pattern="2/2",x=x,replacement="1/1")))
   vcf.file[,3:ncol(vcf.file)] <- as.data.frame(apply(vcf.file[,3:ncol(vcf.file)],
                                                      2, function(x){
-                                                       gsub(pattern="2/2",x=x,replacement="1/1")
-                                                       gsub(pattern="0/2",x=x,replacement="0/1")
-                                                       gsub(pattern="2/0",x=x,replacement="1/0")
+                                                       x=gsub(pattern="2/2",x=x,replacement="1/1")
+                                                       x=gsub(pattern="0/2",x=x,replacement="0/1")
+                                                       x=gsub(pattern="2/0",x=x,replacement="1/0")
                                                      }))
   ## set position as numeric
   vcf.file$POS <- as.numeric(stringr::str_trim(vcf.file$POS))
@@ -800,7 +800,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 
   ## handle unknown chromosome, remove markers if few
   if(remove.chrUkn){
-    chr.unk <- c("CHRUnknown","U","ChrUnknown","Unknown","Un","ChrUn")
+    chr.unk <- c("CHRUnknown","U","ChrUnknown","Unknown","Un","ChrUn","chrU","ChrU")
     if(verbose >0){
       print(paste0("Removed ",nrow(vcf.file[vcf.file$CHROM %in% chr.unk,]),
                    " markers from unknown chromosome"))
@@ -1668,6 +1668,7 @@ GGAIN <- function(data, traits, first_year){
 #' @export
 #' @examples
 #' print_table(mtcars)
+#' @importFrom DT datatable formatSignif
 
 print_table <- function(table, rownames = FALSE, digits = 3, ...){
   df <- DT::datatable(table, rownames = rownames, extensions = 'Buttons',
@@ -1722,7 +1723,6 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 
 
 
-#' Plot distribution of breeding values
 #' Plot distribution of breeding values for each trait and add position of selected genotypes
 #'
 #' @param BV data frame with breeding values, with GID in rows and traits in columns
@@ -1730,13 +1730,16 @@ data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
 #' @param genoCol character vector of column name for GID (default is "GID")
 #' @param selGen character vector of selected genotypes to highlight in the plot
 #' @param colorCol character vector of column name for color (default is NULL)
+#' @param direction.pal numeric, direction of the color palette, either 1 or -1 (default is -1)
 #'
 #' @importFrom ggplot2 aes geom_density geom_area geom_vline labs ggplot geom_rug scale_fill_viridis_d scale_color_viridis_d
 #' @importFrom ggrepel geom_label_repel
 #' @importFrom bigstatsr theme_bigstatsr
 #' @returns a ggplot object
 #' @export
-plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=NULL){
+plotDistrib_selGen <- function(BV, trait, genoCol="GID",
+                               selGen=NULL, colorCol=NULL, direction.pal=-1){
+  BV <- as.data.frame(BV)
 
   ## add verifications
   if(!trait %in% colnames(BV)){
@@ -1751,6 +1754,9 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
   }
   if(!is.null(colorCol) && !colorCol %in% colnames(BV)){
     stop(paste0("Color column ", colorCol, " not found in the dataset"))
+  }
+  if(!direction.pal %in% c(1,-1)){
+    stop("direction.pal should be either 1 or -1")
   }
   ## split the distribution into densities
   x <- BV[[trait]]
@@ -1784,37 +1790,40 @@ plotDistrib_selGen <- function(BV, trait, genoCol="GID", selGen=NULL, colorCol=N
   if(!is.null(selGen)){
     ## subset the dataset for the selected genotypes
     dat.sel <- BV[BV[[genoCol]] %in% selGen,]
-    p <- p+ ggplot2::geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]], color=.data[[colorCol]]),
-                              linewidth=1, sides="b", inherit.aes = FALSE)
 
-    if(is.numeric(dat.sel[[colorCol]])){
+
+    if(!is.null(colorCol) && is.numeric(dat.sel[[colorCol]]) ){
       p <- p +
+        ggplot2::geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]],color=.data[[colorCol]]),
+                          linewidth=1, sides="b", inherit.aes = FALSE)+
         ggrepel::geom_label_repel(data=dat.sel,
                                   mapping = aes(x=.data[[trait]],y=0,
                                                 label=.data[[genoCol]],fill=.data[[colorCol]]),
-                                  color="black",direction="y",point.padding = 0.01,
+                                  color="black",
+                                  direction="y",point.padding = 0.01,
                                   force_pull = 0.1,size=3,
                                   vjust=0.6, max.overlaps = Inf,
                                   fontface="bold",alpha=0.7) +
-        ggplot2::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
-        ggplot2::scale_color_viridis_d(begin=0.35, direction=1,option="H")
-    } else {
+        ggplot2::scale_fill_viridis_c(begin=0.35, direction=direction.pal,option="H")+
+        ggplot2::scale_color_viridis_c(begin=0.35, direction=direction.pal,option="H")
+    } else { ## if no color scale: print the genotype names
       p <- p +
+        ggplot2::geom_rug(data=dat.sel, mapping= aes(x=.data[[trait]]),
+                          linewidth=1, sides="b", inherit.aes = FALSE)+
         ggrepel::geom_label_repel(data=dat.sel,
                                   mapping = aes(x=.data[[trait]],y=0,
-                                                label=.data[[genoCol]],fill=.data[[colorCol]]),
+                                                label=.data[[genoCol]]),
                                   color="black", direction="y",point.padding = 0.01,
                                   force_pull = 0.1,size=3,
                                   vjust=0.6, max.overlaps = Inf,
-                                  fontface="bold",alpha=0.7)+
-        ggplot2::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
-        ggplot2::scale_color_viridis_d(begin=0.35, direction=1,option="H")
+                                  fontface="bold",alpha=0.7)#+
+      # ggplot2::scale_fill_viridis_d(begin=0.35, direction=1,option="H")+
+      # ggplot2::scale_color_viridis_d(begin=0.35, direction=1,option="H")
     } ## end if colorCol
   } ## end if selGen
-  plot(p)
+  #plot(p)
   return(p)
 }
-
 
 #' Interactively select rows from a table with filters and download
 #'

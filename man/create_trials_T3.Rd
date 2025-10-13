@@ -14,6 +14,7 @@ create_trials_T3(
   year = NULL,
   location = NULL,
   accession_name = NULL,
+  trial_name = NULL,
   transplanting_date = NA,
   plot_number = NA,
   planting_date = NA,
@@ -57,6 +58,8 @@ create_trials_T3(
 
 \item{accession_name}{character string, name of the column in \code{dat} that contains the accession name, mandatory.}
 
+\item{trial_name}{character string, name of the column in \code{dat} that contains the trial name, if not present, it is computed as \code{paste0(prefix_BP,"_",year,"_",location)}.}
+
 \item{transplanting_date}{character string, name of the column in \code{dat} that contains the transplanting date.}
 
 \item{plot_number}{character string, name of the column in \code{dat} that contains the plot number. If not present, increasing number from 1000.}
@@ -95,7 +98,10 @@ create_trials_T3(
 
 \item{design_type}{character string, name of the column in \code{dat} that contains the design type, default is "RCBD".}
 
-\item{trial_type}{character string, name of the column in \code{dat} that contains the trial type, default is "phenotyping_trial".}
+\item{trial_type}{character string, name of the column in \code{dat} that contains the trial type, default is "phenotyping_trial". Should be one of: Seedling Nursery,
+phenotyping_trial, Advanced Yield Trial, Preliminary Yield Trial, Uniform Yield Trial,
+Variety Release Trial, Clonal Evaluation, genetic_gain_trial, storage_trial, heterosis_trial,
+health_status_trial, grafting_trial, Screen House, Seed Multiplication, crossing_block_trial, Specialty Trial}
 
 \item{description}{character string, name of the column in \code{dat} that contains the description of the trial, default is "Cooperative nursery of scab trials".}
 
