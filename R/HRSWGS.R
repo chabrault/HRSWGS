@@ -1160,8 +1160,8 @@ getGenoTas_to_DF <- function(tasGeno){
 #' @param nreps number of repetitions for cross-validation, default is 10
 #' @param nfolds number of folds for cross-validation, default is 10
 #' @param h bandwith parameter for RKHS, default is 1. If multiple values are provided, method will be RKHS Kernel Averaging.
-#' @param nIter number of iterations for RKHS, default is 6000
-#' @param burnIn number of burn-in iterations for RKHS, default is 1000
+#' @param nIter number of iterations for RKHS, default is 8000
+#' @param burnIn number of burn-in iterations for RKHS, default is 1500
 #' @param ntree number of trees for RandomForest, default is 100
 #' @param nb.mtry number of mtry for RandomForest, default is 10
 #' @param p2d.temp path to directory to export temporary genomic prediction results, default is NULL (could cause error in parallelization if NULL).
@@ -1186,13 +1186,13 @@ getGenoTas_to_DF <- function(tasGeno){
 #' @export
 
 compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
-                               nfolds=10, h=1, nb.mtry=10, nIter=6000,burnIn=1000,
+                               nfolds=10, h=1, nb.mtry=10, nIter=8000,burnIn=1500,
                                ntree=100,p2d.temp=NULL,
                                nb.cores=1, p2f.stats=NULL){
 
 
   stopifnot(GP.method %in% c("rrBLUP","GBLUP","RKHS","RKHS-KA","RandomForest",
-                             "BayesA","BayesB","LASSO"),
+                             "BayesA","BayesB","BayesC","LASSO"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno))
 
@@ -1220,169 +1220,197 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
     inds <- intersect(pheno_tr$GID, rownames(geno))
     pheno_tr <- pheno_tr[match(inds, pheno_tr$GID),]
     geno_tr <- geno[inds,]
-    ## vector of phenotypic values
-    y <- pheno_tr[,tr] ; names(y) <- pheno_tr$GID
 
-    ## genomic relationship matrix
-    G <- as.matrix(crossprod(geno_tr)/ncol(geno_tr))
+    if(length(inds) < 50){
+      print(paste("Too few genotypes for ",tr,"trait"))
+      next
+    } else{
+      ## vector of phenotypic values
+      y <- pheno_tr[,tr] ; names(y) <- pheno_tr$GID
 
-
-    ## create cluster
-    cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
-    doSNOW::registerDoSNOW(cl)
-
-    for(r in 1:nreps){
-      write(r, stderr())
-      ## get cross-validation folds
-      folds <- getFolds(nrow(pheno_tr), nb.folds=nfolds, seed=r+57425)
+      ## genomic relationship matrix
+      G <- as.matrix(crossprod(geno_tr)/ncol(geno_tr))
 
 
-      if(GP.method %in% "rrBLUP"){
-        ## parallel computation of GP for rrBLUP
-        out <- foreach::foreach(f=1:nfolds) %dopar%{
-          ## estimate marker effects on training set
-          res <- rrBLUP::kinship.BLUP(y=y[-folds[[f]]],
-                                      G.train=geno_tr[-folds[[f]],],
-                                      G.pred=geno_tr[folds[[f]],], K.method="RR")$g.pred
-          return(res)
-        }
+      ## create cluster
+      cl <- parallel::makeCluster(type="SOCK",spec=nb.cores)
+      doSNOW::registerDoSNOW(cl)
 
-      } else if(GP.method %in% "GBLUP"){
-        ## parallel computation of GP for GBLUP
-        out <- foreach::foreach(f=1:nfolds) %dopar%{
-          ## compute the genomic relationship matrix
-          K <- tcrossprod(geno_tr)/ncol(geno_tr)
-
-          ## function inputs
-          data <- pheno_tr
-          ## set phenotypes to NA for the training set
-          data[[tr]][folds[[f]]] <- NA
-          ## estimate marker effects on training set
-          res <- rrBLUP::kin.blup(data=data,geno="GID",pheno=tr,K=K)
-          return(res$pred[folds[[f]]])
-        }
+      for(r in 1:nreps){
+        write(r, stderr())
+        ## get cross-validation folds
+        folds <- getFolds(nrow(pheno_tr), nb.folds=nfolds, seed=r+57425)
 
 
-      } else if(GP.method %in% "RKHS" & length(h) ==1){
-        ## define distance matrix for RKHS
-        D <- as.matrix(dist(geno_tr,method="euclidean"))^2
-        D <- D/mean(D)
-        ### compute kernel
-        K <- exp(-h*D)
-
-        ## parallel processing
-        out <- foreach::foreach(f=1:nfolds,.errorhandling = "pass") %dopar% {
-          ## estimate marker effects on training set
-          yNA <- y
-          yNA[folds[[f]]] <- NA
-          if(!is.null(p2d.temp)){
-            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,
-                               "_",r,"_",f)
+        if(GP.method %in% "rrBLUP"){
+          requireNamespace(rrBLUP)
+          ## parallel computation of GP for rrBLUP
+          out <- foreach::foreach(f=1:nfolds, .packages="rrBLUP") %dopar%{
+            ## estimate marker effects on training set
+            res <- rrBLUP::kinship.BLUP(y=y[-folds[[f]]],
+                                        G.train=geno_tr[-folds[[f]],],
+                                        G.pred=geno_tr[folds[[f]],], K.method="RR")$g.pred
+            return(res)
           }
-          fit <- BGLR::BGLR(y=yNA,ETA=list(list(K=K,model='RKHS')),
-                            nIter=nIter,burnIn=burnIn,
-                            saveAt=p2f.temp,verbose=FALSE)
-          return(as.data.frame(fit$yHat[folds[[f]]]))
-        }
 
-      } else if(GP.method %in% "RKHS-KA" | length(h) >1){
-        ## define distance matrix for RKHS
-        D <- as.matrix(dist(geno_tr,method="euclidean"))^2
-        D <- D/mean(D)
-        KList <- list()
-        for(i in 1:length(h)){
-          KList[[i]]<-list(K=exp(-h[i]*D),model='RKHS')
-        }
+        } else if(GP.method %in% "GBLUP"){
+          requireNamespace(rrBLUP)
+          ## parallel computation of GP for GBLUP
+          out <- foreach::foreach(f=1:nfolds, .packages="rrBLUP") %dopar%{
+            ## compute the genomic relationship matrix
+            K <- tcrossprod(geno_tr)/ncol(geno_tr)
 
-        ## parallel processing
-        out <- foreach::foreach(f=1:nfolds,.errorhandling = "pass") %dopar% {
-          ## estimate marker effects on training set
-          yNA <- y
-          yNA[folds[[f]]] <- NA
-          if(!is.null(p2d.temp)){
-            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",
-                               tr,"_",r,"_",f)
+            ## function inputs
+            data <- pheno_tr
+            ## set phenotypes to NA for the training set
+            data[[tr]][folds[[f]]] <- NA
+            ## estimate marker effects on training set
+            res <- rrBLUP::kin.blup(data=data,geno="GID",pheno=tr,K=K)$g.pred
+            return(res$pred[folds[[f]]])
           }
-          fit <- BGLR::BGLR(y=yNA,ETA=KList,
-                            nIter=nIter,burnIn=burnIn,
-                            saveAt=p2f.temp,verbose=FALSE)
-          return(as.data.frame(fit$yHat[folds[[f]]]))
-        }
 
 
-      } else if(GP.method %in% "RandomForest"){
+        } else if(GP.method %in% "RKHS" & length(h) ==1){
+          requireNamespace(BGLR)
+          ## define distance matrix for RKHS
+          D <- as.matrix(dist(geno_tr,method="euclidean"))^2
+          D <- D/mean(D)
+          ### compute kernel
+          K <- exp(-h*D)
 
-        ## optimize mtry = number of randomly selected variables at each split
-        #tunegridrf <- expand.grid(.mtry=seq(1,ncol(geno_tr)/3,length.out=nb.mtry))
-        tunegridrf <- expand.grid(.mtry=c(100,500,1000,2000,5000))
-        ## parallel processing
-        out <- foreach::foreach(f=1:nfolds,.errorhandling="pass") %dopar% {
-          ## estimate marker effects on training set
-
-          fit <- caret::train(y=y[-folds[[f]]],
-                              x=geno_tr[-folds[[f]],],
-                              method = "rf",tuneGrid = tunegridrf, ntree=ntree)
-          return(as.data.frame(caret::predict.train(fit,geno_tr[folds[[f]],])))
-        }
-      }else if(GP.method %in% "LASSO"){
-        out <- foreach::foreach(f=1:nfolds) %dopar% {
-          ### Fit the model with glmnet package
-          cv <- glmnet::cv.glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],], alpha=1)
-          fit <- glmnet::glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],],
-                                alpha=1,lambda=cv$lambda.min)
-          return(geno_tr[folds[[f]],] %*% as.matrix(fit$beta))
-        }
-
-      } else if(GP.method %in% "BayesA"){
-        out <- foreach::foreach(f=1:nfolds) %dopar% {
-
-          if(!is.null(p2d.temp)){
-            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
+          ## parallel processing
+          out <- foreach::foreach(f=1:nfolds,.errorhandling = "pass",.packages="BGLR") %dopar% {
+            ## estimate marker effects on training set
+            yNA <- y
+            yNA[folds[[f]]] <- NA
+            if(!is.null(p2d.temp)){
+              p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,
+                                 "_",r,"_",f)
+            }
+            fit <- BGLR::BGLR(y=yNA,ETA=list(list(K=K,model='RKHS')),
+                              nIter=nIter,burnIn=burnIn,
+                              saveAt=p2f.temp,verbose=FALSE)
+            return(as.data.frame(fit$yHat[folds[[f]]]))
           }
-          ## estimate marker effects on training set
-          fit <- BGLR::BGLR(y=y[-folds[[f]]],
-                            ETA=list(list(X=geno_tr[-folds[[f]],],model='BayesA')),
-                            nIter=nIter,burnIn=burnIn,
-                            saveAt=p2f.temp,verbose=FALSE)
-          return(geno_tr[folds[[f]],] %*% as.matrix(fit$ETA[[1]]$b))
-        }
 
-      } else if(GP.method %in% "BayesB"){
-        out <- foreach::foreach(f=1:nfolds) %dopar% {
-          if(!is.null(p2d.temp)){
-            p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
+        } else if(GP.method %in% "RKHS-KA" | length(h) >1){
+          requireNamespace(BGLR)
+          ## define distance matrix for RKHS
+          D <- as.matrix(dist(geno_tr,method="euclidean"))^2
+          D <- D/mean(D)
+          KList <- list()
+          for(i in 1:length(h)){
+            KList[[i]]<-list(K=exp(-h[i]*D),model='RKHS')
           }
-          ## estimate marker effects on training set
-          fit <- BGLR::BGLR(y=y[-folds[[f]]],
-                            ETA=list(list(X=geno_tr[-folds[[f]],],model='BayesB')),
-                            nIter=nIter,burnIn=burnIn,
-                            saveAt=p2f.temp,verbose=FALSE)
-          ## return predicted value on validation set for this fold
-          return(geno_tr[folds[[f]],] %*% as.matrix(fit$ETA[[1]]$b))
-        }
 
-      } ## end if method
-
-
-      ## combine all predicted values across folds
-      ### (too few individuals to calculate predictive ability for each fold)
-      pred.obs.all <- purrr::map_dfr(out,as.data.frame)
-      pred.obs.all <- data.frame(id_geno=rownames(pred.obs.all),
-                                 obs=pheno[match(rownames(pred.obs.all),pheno$GID),tr],
-                                 pred=pred.obs.all[,1],
-                                 trait=tr,rep=r, GP.method=GP.method)
-      pred.list[[tr]][[r]] <- pred.obs.all
+          ## parallel processing
+          out <- foreach::foreach(f=1:nfolds,.errorhandling = "pass",.packages="BGLR") %dopar% {
+            ## estimate marker effects on training set
+            yNA <- y
+            yNA[folds[[f]]] <- NA
+            if(!is.null(p2d.temp)){
+              p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",
+                                 tr,"_",r,"_",f)
+            }
+            fit <- BGLR::BGLR(y=yNA,ETA=KList,
+                              nIter=nIter,burnIn=burnIn,
+                              saveAt=p2f.temp,verbose=FALSE)
+            return(as.data.frame(fit$yHat[folds[[f]]]))
+          }
 
 
-      ## estimnate predictive ability as Pearson's correlation between observed and predicted
-      idx <- which(gp.stats$trait %in% tr & gp.stats$rep %in% r)
-      gp.stats$corP[idx] <- round(cor(pred.obs.all$obs,pred.obs.all$pred),3)
-      gp.stats$nb.genos.TS[idx] <- length(y)-mean(sapply(folds, length))
-      gp.stats$nb.genos.VS[idx] <- mean(sapply(folds, length))
+        } else if(GP.method %in% "RandomForest"){
+          requireNamespace(caret)
 
-    } ## end for rep
+          ## optimize mtry = number of randomly selected variables at each split
+          #tunegridrf <- expand.grid(.mtry=seq(1,ncol(geno_tr)/3,length.out=nb.mtry))
+          tunegridrf <- expand.grid(.mtry=c(100,500,1000,2000,5000))
+          ## parallel processing
+          out <- foreach::foreach(f=1:nfolds,.errorhandling="pass",.packages="caret") %dopar% {
+            ## estimate marker effects on training set
 
-    parallel::stopCluster(cl)
+            fit <- caret::train(y=y[-folds[[f]]],
+                                x=geno_tr[-folds[[f]],],
+                                method = "rf",tuneGrid = tunegridrf, ntree=ntree)
+            return(as.data.frame(caret::predict.train(fit,geno_tr[folds[[f]],])))
+          }
+        }else if(GP.method %in% "LASSO"){
+          requireNamespace(glmnet)
+          out <- foreach::foreach(f=1:nfolds, .packages="glmnet") %dopar% {
+            ### Fit the model with glmnet package
+            cv <- glmnet::cv.glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],], alpha=1)
+            fit <- glmnet::glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],],
+                                  alpha=1,lambda=cv$lambda.min)
+            return(geno_tr[folds[[f]],] %*% as.matrix(fit$beta))
+          }
+
+        } else if(GP.method %in% "BayesA"){
+          requireNamespace(BGLR)
+          out <- foreach::foreach(f=1:nfolds,.packages="BGLR") %dopar% {
+
+            if(!is.null(p2d.temp)){
+              p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
+            }
+            ## estimate marker effects on training set
+            fit <- BGLR::BGLR(y=y[-folds[[f]]],
+                              ETA=list(list(X=geno_tr[-folds[[f]],],model='BayesA')),
+                              nIter=nIter,burnIn=burnIn,
+                              saveAt=p2f.temp,verbose=FALSE)
+            return(geno_tr[folds[[f]],] %*% as.matrix(fit$ETA[[1]]$b))
+          }
+
+        } else if(GP.method %in% "BayesB"){
+          requireNamespace(BGLR)
+          out <- foreach::foreach(f=1:nfolds,.packages="BGLR") %dopar% {
+            if(!is.null(p2d.temp)){
+              p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
+            }
+            ## estimate marker effects on training set
+            fit <- BGLR::BGLR(y=y[-folds[[f]]],
+                              ETA=list(list(X=geno_tr[-folds[[f]],],model='BayesB')),
+                              nIter=nIter,burnIn=burnIn,
+                              saveAt=p2f.temp,verbose=FALSE)
+            ## return predicted value on validation set for this fold
+            return(geno_tr[folds[[f]],] %*% as.matrix(fit$ETA[[1]]$b))
+          }
+        }else if(GP.method %in% "BayesC"){
+          requireNamespace(BGLR)
+          out <- foreach::foreach(f=1:nfolds,.packages="BGLR") %dopar% {
+            if(!is.null(p2d.temp)){
+              p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
+            }
+            ## estimate marker effects on training set
+            fit <- BGLR::BGLR(y=y[-folds[[f]]],
+                              ETA=list(list(X=geno_tr[-folds[[f]],],model='BayesC')),
+                              nIter=nIter,burnIn=burnIn,
+                              saveAt=p2f.temp,verbose=FALSE)
+            ## return predicted value on validation set for this fold
+            return(geno_tr[folds[[f]],] %*% as.matrix(fit$ETA[[1]]$b))
+          }
+
+        } ## end if method
+
+
+        ## combine all predicted values across folds
+        ### (too few individuals to calculate predictive ability for each fold)
+        pred.obs.all <- purrr::map_dfr(out,as.data.frame)
+        pred.obs.all <- data.frame(id_geno=rownames(pred.obs.all),
+                                   obs=pheno[match(rownames(pred.obs.all),pheno$GID),tr],
+                                   pred=pred.obs.all[,1],
+                                   trait=tr,rep=r, GP.method=GP.method)
+        pred.list[[tr]][[r]] <- pred.obs.all
+
+
+        ## estimnate predictive ability as Pearson's correlation between observed and predicted
+        idx <- which(gp.stats$trait %in% tr & gp.stats$rep %in% r)
+        gp.stats$corP[idx] <- round(cor(pred.obs.all$obs,pred.obs.all$pred),3)
+        gp.stats$nb.genos.TS[idx] <- length(y)-mean(sapply(folds, length))
+        gp.stats$nb.genos.VS[idx] <- mean(sapply(folds, length))
+
+      } ## end for rep
+
+      parallel::stopCluster(cl)
+    } ## end if ind>50
 
   } ## end for trait
 
@@ -1416,8 +1444,8 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 #' @param nfolds number of folds for cross-validation, default is 10
 #' @param h bandwith parameter for RKHS, default is 1.
 #' @param nb.mtry number of randomly selected variables at each split for RandomForest, default is 10
-#' @param nIter number of iterations for RKHS, default is 6000
-#' @param burnIn number of burn-in iterations for RKHS, default is 1000
+#' @param nIter number of iterations for RKHS, default is 8000
+#' @param burnIn number of burn-in iterations for RKHS, default is 1500
 #' @param ntree number of trees for RandomForest, default is 100
 #' @param p2d.temp path to directory to export temporary genomic prediction results, default is NULL (could cause error in parallelization if NULL).
 #' @param nb.cores number of cores to parallelize the computation, default is 1 (no parallelization)
@@ -1438,13 +1466,13 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
                                runCV=FALSE, testSetGID=NULL,
                                nreps=10,nfolds=10, h=1, nb.mtry=10,
-                               nIter=6000,burnIn=1000,
+                               nIter=8000,burnIn=1500,
                                ntree=100,p2d.temp=NULL,
                                nb.cores=1, p2f.stats.cv=NULL,
                                p2f.pred=NULL, verbose=1){
 
   ## initial verifications
-  stopifnot(GP.method %in% c("rrBLUP","RKHS","BayesA","BayesB","BayesC"),
+  stopifnot(GP.method %in% c("rrBLUP","GBLUP","RKHS","BayesA","BayesB","BayesC"),
             #"LASSO","RKHS-KA","RandomForest"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno),
@@ -1488,22 +1516,43 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
     ## parallel computation of GP for rrBLUP
     out <- foreach::foreach(f=1:ntraits,.errorhandling = "pass",
                             .combine = "rbind",.packages = "rrBLUP") %dopar% {
-                              ## estimate marker effects on all available data
-                              yNA <- merge(data.frame(GID=c(rownames(geno))),
-                                           pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
-                              yGID <- yNA$GID
-                              ## for test set geno if provided, set to NA (remove from training set)
-                              if(!is.null(testSetGID)){
-                                yNA[yNA$GID %in% testSetGID,tr] <- NA
-                              }
-                              fit <- rrBLUP::kinship.BLUP(y=yNA[[traits[f]]],
-                                                          G.train=geno,
-                                                          G.pred=geno, K.method="RR")$g.pred
-                              ## output predicted values
-                              tmp <- data.frame(GID=yGID, GP.method=GP.method,trait=traits[f],yHat=fit)
-                              return(tmp)
-                            }
-  } else if(GP.method == "RKHS"){
+
+      ## estimate marker effects on all available data
+      yNA <- merge(data.frame(GID=c(rownames(geno))),
+                   pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
+      yGID <- yNA$GID
+      ## for test set geno if provided, set to NA (remove from training set)
+      if(!is.null(testSetGID)){
+        yNA[yNA$GID %in% testSetGID,tr] <- NA
+      }
+      fit <- rrBLUP::kinship.BLUP(y=yNA[[traits[f]]],
+                                  G.train=geno,
+                                  G.pred=geno, K.method="RR")$g.pred
+      ## output predicted values
+      tmp <- data.frame(GID=yGID, GP.method=GP.method,trait=traits[f],yHat=fit)
+      return(tmp)
+    }
+  } else if(GP.method %in% "GBLUP"){
+    requireNamespace(rrBLUP)
+    ## parallel computation of GP for GBLUP
+    out <- foreach::foreach(f=1:ntraits, .packages="rrBLUP",.errorhandling = "pass",
+                            .combine = "rbind") %dopar%{
+      ## estimate marker effects on all available data
+      yNA <- merge(data.frame(GID=c(rownames(geno))),
+                   pheno.traits[,c("GID",traits[f])], by="GID", all.x=TRUE)
+      yGID <- yNA$GID
+
+      ## compute the genomic relationship matrix
+      K <- tcrossprod(geno[yGID,])/ncol(geno)
+
+      ## estimate marker effects on training set
+      res <- rrBLUP::kin.blup(data=yNA,geno="GID",pheno=traits[f],K=K)
+      tmp <- data.frame(GID=yGID, GP.method=GP.method,
+                        trait=traits[f],yHat=res$pred)
+      return(tmp)
+    }
+
+  }else if(GP.method == "RKHS"){
     D <- as.matrix(dist(geno,method="euclidean"))^2
     D <- D/mean(D, na.rm=T)
     ### compute kernel
@@ -1574,7 +1623,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
   parallel::stopCluster(cl)
   ## set the predicted values in a wide format, with one column per trait
   all.pred <- out %>%
-    dplyr::select(tidyselect::all_of(c("GID","GP.method","trait","yHat"))) %>%
+    dplyr::select(GID,GP.method,trait,yHat) %>%
     tidyr::pivot_wider(names_from="trait", values_from="yHat")
 
   if(!is.null(testSetGID)){
@@ -1604,7 +1653,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
     return(list(obspred=gp.cv$obspred, gp.stats=gp.cv$gp.stats,
                 all.pred=all.pred))
   } else {
-    return(all.pred)
+    return(all.pred) ## doesn't work
   }
 }
 

@@ -13,8 +13,8 @@ compute_GP_methods(
   nfolds = 10,
   h = 1,
   nb.mtry = 10,
-  nIter = 6000,
-  burnIn = 1000,
+  nIter = 8000,
+  burnIn = 1500,
   ntree = 100,
   p2d.temp = NULL,
   nb.cores = 1,
@@ -38,9 +38,9 @@ compute_GP_methods(
 
 \item{nb.mtry}{number of mtry for RandomForest, default is 10}
 
-\item{nIter}{number of iterations for RKHS, default is 6000}
+\item{nIter}{number of iterations for RKHS, default is 8000}
 
-\item{burnIn}{number of burn-in iterations for RKHS, default is 1000}
+\item{burnIn}{number of burn-in iterations for RKHS, default is 1500}
 
 \item{ntree}{number of trees for RandomForest, default is 100}
 
