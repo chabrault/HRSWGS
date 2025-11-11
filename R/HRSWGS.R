@@ -1223,7 +1223,6 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
     if(length(inds) < 50){
       print(paste("Too few genotypes for ",tr,"trait"))
-      next
     } else{
       ## vector of phenotypic values
       y <- pheno_tr[,tr] ; names(y) <- pheno_tr$GID
@@ -1243,7 +1242,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
         if(GP.method %in% "rrBLUP"){
-          requireNamespace(rrBLUP)
+          requireNamespace("rrBLUP")
           ## parallel computation of GP for rrBLUP
           out <- foreach::foreach(f=1:nfolds, .packages="rrBLUP") %dopar%{
             ## estimate marker effects on training set
@@ -1254,7 +1253,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
           }
 
         } else if(GP.method %in% "GBLUP"){
-          requireNamespace(rrBLUP)
+          requireNamespace("rrBLUP")
           ## parallel computation of GP for GBLUP
           out <- foreach::foreach(f=1:nfolds, .packages="rrBLUP") %dopar%{
             ## compute the genomic relationship matrix
@@ -1271,7 +1270,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
         } else if(GP.method %in% "RKHS" & length(h) ==1){
-          requireNamespace(BGLR)
+          requireNamespace("BGLR")
           ## define distance matrix for RKHS
           D <- as.matrix(dist(geno_tr,method="euclidean"))^2
           D <- D/mean(D)
@@ -1294,7 +1293,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
           }
 
         } else if(GP.method %in% "RKHS-KA" | length(h) >1){
-          requireNamespace(BGLR)
+          requireNamespace("BGLR")
           ## define distance matrix for RKHS
           D <- as.matrix(dist(geno_tr,method="euclidean"))^2
           D <- D/mean(D)
@@ -1320,7 +1319,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
 
 
         } else if(GP.method %in% "RandomForest"){
-          requireNamespace(caret)
+          requireNamespace("caret")
 
           ## optimize mtry = number of randomly selected variables at each split
           #tunegridrf <- expand.grid(.mtry=seq(1,ncol(geno_tr)/3,length.out=nb.mtry))
@@ -1335,7 +1334,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
             return(as.data.frame(caret::predict.train(fit,geno_tr[folds[[f]],])))
           }
         }else if(GP.method %in% "LASSO"){
-          requireNamespace(glmnet)
+          requireNamespace("glmnet")
           out <- foreach::foreach(f=1:nfolds, .packages="glmnet") %dopar% {
             ### Fit the model with glmnet package
             cv <- glmnet::cv.glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],], alpha=1)
@@ -1345,7 +1344,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
           }
 
         } else if(GP.method %in% "BayesA"){
-          requireNamespace(BGLR)
+          requireNamespace("BGLR")
           out <- foreach::foreach(f=1:nfolds,.packages="BGLR") %dopar% {
 
             if(!is.null(p2d.temp)){
@@ -1360,7 +1359,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
           }
 
         } else if(GP.method %in% "BayesB"){
-          requireNamespace(BGLR)
+          requireNamespace("BGLR")
           out <- foreach::foreach(f=1:nfolds,.packages="BGLR") %dopar% {
             if(!is.null(p2d.temp)){
               p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
@@ -1374,7 +1373,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
             return(geno_tr[folds[[f]],] %*% as.matrix(fit$ETA[[1]]$b))
           }
         }else if(GP.method %in% "BayesC"){
-          requireNamespace(BGLR)
+          requireNamespace("BGLR")
           out <- foreach::foreach(f=1:nfolds,.packages="BGLR") %dopar% {
             if(!is.null(p2d.temp)){
               p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f)
@@ -1533,7 +1532,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
       return(tmp)
     }
   } else if(GP.method %in% "GBLUP"){
-    requireNamespace(rrBLUP)
+    requireNamespace("rrBLUP")
     ## parallel computation of GP for GBLUP
     out <- foreach::foreach(f=1:ntraits, .packages="rrBLUP",.errorhandling = "pass",
                             .combine = "rbind") %dopar%{
