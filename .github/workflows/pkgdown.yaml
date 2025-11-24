@@ -1,51 +1,57 @@
-# Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Need help debugging build failures? Start at https://github.com/r-lib/actions#where-to-find-help
+name: Build pkgdown site
+
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   pull_request:
-  release:
-    types: [published]
-  workflow_dispatch:
-
-name: pkgdown.yaml
-
-permissions: read-all
+    branches: [main]
 
 jobs:
-  pkgdown:
+  build:
     runs-on: ubuntu-latest
-    # Only restrict concurrency for non-PR jobs
-    concurrency:
-      group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
-    env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-    permissions:
-      contents: write
+
     steps:
-      - uses: actions/checkout@v4
+      # 1️⃣ Checkout repository
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - uses: r-lib/actions/setup-pandoc@v2
-
-      - uses: r-lib/actions/setup-r@v2
+      # 2️⃣ Setup R
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
         with:
-          use-public-rspm: true
+          r-version: '4.3'
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            any::pkgdown
-            github::TriticeaeToolbox/BrAPI.R
-          needs: website
+      # 3️⃣ Install system dependencies (optional, if needed)
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
 
-      - name: Build site
-        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
-        shell: Rscript {0}
+      # 4️⃣ Install CRAN packages
+      - name: Install CRAN packages
+        run: |
+          R -e 'install.packages(c("devtools","remotes","pkgdown","sessioninfo","rcmdcheck"))'
 
-      - name: Deploy to GitHub pages 🚀
-        if: github.event_name != 'pull_request'
-        uses: JamesIves/github-pages-deploy-action@v4.5.0
-        with:
-          clean: false
-          branch: gh-pages
-          folder: docs
+      # 5️⃣ Install Bioconductor packages
+      - name: Install Bioconductor packages
+        run: |
+          R -e 'if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")'
+          R -e 'BiocManager::install(c("SummarizedExperiment","GenomicRanges"))'
+
+      # 6️⃣ Install GitHub-only packages
+      - name: Install GitHub packages
+        run: |
+          R -e 'remotes::install_github("TriticeaeToolbox/BrAPI.R")'
+
+      # 7️⃣ Run R CMD check
+      - name: Run R CMD check
+        run: |
+          R -e 'devtools::check(args = c("--as-cran"))'
+
+      # 8️⃣ Build pkgdown site
+      - name: Build pkgdown site
+        run: |
+          R -e 'pkgdown::build_site()'
+
+      # 9️⃣ Display session info (optional)
+      - name: Session info
+        run: |
+          R -e 'sessioninfo::session_info()'
