@@ -13,7 +13,7 @@ print_table(table, rownames = FALSE, digits = 3, ...)
 
 \item{digits}{integer, number of digits to print for numeric columns, default is 3}
 
-\item{...}{additional arguments to pass to DT::datatable}
+\item{...}{additional arguments to pass to \code{DT::datatable}}
 }
 \value{
 a DT datatable object

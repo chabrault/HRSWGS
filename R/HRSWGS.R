@@ -49,22 +49,22 @@ setup_scenarios <- function(myPheno, scenario, envs.train=NULL, envs.pred=NULL,
   } else if(scenario %in% "knLoc.nYr"){
     ## remove environments from same year
     trn <- lapply(tsn, function(x){
-      envs <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,2)), negate=TRUE)
+      envs <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=TRUE),`[`,2)), negate=TRUE)
       return(intersect(envs, envs.train))
     })
 
   } else if(scenario %in% "nLoc.knYr"){
     ## remove environments from same location
     trn <- lapply(tsn, function(x) {
-      envs <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,1)), negate=TRUE)
+      envs <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=TRUE),`[`,1)), negate=TRUE)
       return(intersect(envs, envs.train))
     })
 
   }else if(scenario %in% "nLoc.nYr"){
     trn <- lapply(tsn, function(x) {
       ## remove environments from same location and year
-      sub1 <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=T),`[`,1)), negate=TRUE)
-      sub1 <- stringr::str_subset(sub1, unlist(lapply(strsplit(x,"_",fixed=T),`[`,2)), negate=TRUE)
+      sub1 <- stringr::str_subset(all_env, unlist(lapply(strsplit(x,"_",fixed=TRUE),`[`,1)), negate=TRUE)
+      sub1 <- stringr::str_subset(sub1, unlist(lapply(strsplit(x,"_",fixed=TRUE),`[`,2)), negate=TRUE)
       return(intersect(sub1, envs.train))
     })
   }
@@ -246,7 +246,7 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
   if(!is.null(ref.name)){
     df.ref <- data.frame(ref.name=ref.name,
                          noPunct=gsub("[[:punct:]]","",ref.name),
-                         stringsAsFactors = F)
+                         stringsAsFactors = FALSE)
   } else {
     ## create df.ref based on corresp.list
     df.ref <- data.frame(ref.name=unique(names(corresp.list)),
@@ -256,13 +256,13 @@ concordance_match_name <- function(match.name,ref.name=NULL, allowNoMatch=TRUE,
 
   df.match <- data.frame(match.name=match.name,
                          format.name=format_names(match.name)$corrected,
-                         stringsAsFactors = F)
+                         stringsAsFactors = FALSE)
   df.match$noPunct <- gsub("[[:punct:]]","",df.match$format.name)
   df.match <- dplyr::distinct(df.match)
 
   ## merge match and ref based on name without punctuation
   df.merged <- merge(df.ref, df.match, by.x="noPunct", by.y="noPunct",
-                     all.x=F, all.y=allowNoMatch)
+                     all.x=FALSE, all.y=allowNoMatch)
   if(verbose > 0){
     print(paste0("Number of unique genotype names in reference data: ", nrow(df.ref)))
     print(paste0("Number of unique genotype names in match data: ", nrow(df.match)))
@@ -745,7 +745,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     if(verbose > 0) print("Load the vcf file...")
     ## load vcf file and convert to gt
     vcf <- vcfR::read.vcfR(vcf.p2f, verbose = FALSE)
-    gt <- vcfR::extract.gt(vcf, element = "GT", as.numeric=F, IDtoRowNames = TRUE)
+    gt <- vcfR::extract.gt(vcf, element = "GT", as.numeric=FALSE, IDtoRowNames = TRUE)
     meta <- vcf@meta
     mrk.info <- tibble::as_tibble(vcfR::getFIX(vcf))
     mrk.info$POS <- as.numeric(mrk.info$POS)
@@ -795,7 +795,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 
     colnames(vcf.file) <- plyr::mapvalues(colnames(vcf.file),
                                           from=corresp.geno.name[,1],
-                                          to=corresp.geno.name[,2], warn_missing=F)
+                                          to=corresp.geno.name[,2], warn_missing=FALSE)
   }
 
   ## handle unknown chromosome, remove markers if few
@@ -858,7 +858,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     dup.genos1 <- unique(colnames(vcf.file)[duplicated(colnames(vcf.file))])
 
     ### detect duplicated genotypes with .1/.2/... appended at the end of the name
-    dup.genos2 <- grep(pattern="\\.[1-9]{1,2}$", colnames(vcf.file), value=T)
+    dup.genos2 <- grep(pattern="\\.[1-9]{1,2}$", colnames(vcf.file), value=TRUE)
     dup.genos2 <- unique(stringr::str_remove(dup.genos2, pattern="\\.[1-9]{1,2}$"))
     dup.genos <- unique(c(dup.genos1,dup.genos2))
     if(verbose >0){
@@ -928,7 +928,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 
   ## Remove markers with too many heterozygous genotypes
   if(!is.null(tresh.heterozygous)){
-    hetero <- apply(vcf.file, 2, function(x) {sum(x %in% c("0/1","1/0","0|1","1|0"), na.rm = T)})
+    hetero <- apply(vcf.file, 2, function(x) {sum(x %in% c("0/1","1/0","0|1","1|0"), na.rm = TRUE)})
     geno2rem <- names(hetero)[hetero > tresh.heterozygous * nrow(vcf.file)]
     if(verbose > 0){
       print(paste0("Removed ",length(geno2rem)," genotypes with too many heterozygous markers"))
@@ -1063,7 +1063,7 @@ format_curate_vcf <- function(vcf.p2f=NULL,
 
     ## load imputed vcf
     vcf.imp <- vcfR::read.vcfR(paste0(p2f.imp,".vcf.gz"), verbose = FALSE)
-    gt.imp <- vcfR::extract.gt(vcf.imp, element = "GT", as.numeric=F, IDtoRowNames = FALSE)
+    gt.imp <- vcfR::extract.gt(vcf.imp, element = "GT", as.numeric=FALSE, IDtoRowNames = FALSE)
     mrk.info.imp <- tibble::as_tibble(vcfR::getFIX(vcf.imp))
     vcf.file <- cbind(mrk.info.imp[,c("CHROM","POS")],gt.imp)
     vcf.file$POS <- as.numeric(vcf.file$POS)
@@ -1127,6 +1127,9 @@ getGenoTas_to_DF <- function(tasGeno){
   }
   if(!requireNamespace("rJava", quietly = TRUE)){
     stop("Please install rJava package to perform kNNI imputation")
+  }
+  if(!requireNamespace("SummarizedExperiment", quietly = TRUE)){
+    stop("Please install SummarizedExperiment with BiocManager::install function")
   }
 
 
@@ -1553,7 +1556,7 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
 
   }else if(GP.method == "RKHS"){
     D <- as.matrix(dist(geno,method="euclidean"))^2
-    D <- D/mean(D, na.rm=T)
+    D <- D/mean(D, na.rm=TRUE)
     ### compute kernel
     K <- exp(-h*D)
     rm(D)
@@ -1672,7 +1675,7 @@ GGAIN <- function(data, traits, first_year){
   stopifnot(all(traits %in% colnames(data)),
             all(first_year %in% colnames(data)))
   ## subtract the minimum first year to the calculation of the percentage of change
-  data$FIRST_YEAR0 <- data[[first_year]] - min(data[[first_year]], na.rm=T) +1
+  data$FIRST_YEAR0 <- data[[first_year]] - min(data[[first_year]], na.rm=TRUE) +1
 
   df.fit <- data.frame(trait=traits, intercept=NA, slope=NA,
                        slope.min=NA, slope.max=NA, R2.adj=NA, pvalue=NA)
@@ -1710,7 +1713,7 @@ GGAIN <- function(data, traits, first_year){
 #' @param table data frame to print
 #' @param rownames logical, if TRUE, print row names, default is FALSE
 #' @param digits integer, number of digits to print for numeric columns, default is 3
-#' @param ... additional arguments to pass to DT::datatable
+#' @param ... additional arguments to pass to `DT::datatable`
 #'
 #' @returns a DT datatable object
 #' @export
@@ -1746,7 +1749,7 @@ print_table <- function(table, rownames = FALSE, digits = 3, ...){
 #' @importFrom gtsummary tbl_summary add_p
 #' @export
 
-data_summary <- function(data, variables=NULL, by=NULL, add.pval=T){
+data_summary <- function(data, variables=NULL, by=NULL, add.pval=TRUE){
 
   ## if not provided, select numeric variables
   if(is.null(variables)){
@@ -1908,7 +1911,7 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
   dt <- data %>%
     as.data.frame() %>%
     DT::datatable(data, rownames = FALSE, extensions = 'Buttons',
-                  filter=list(position="top",clear=F,selection = "multiple"),
+                  filter=list(position="top",clear=FALSE,selection = "multiple"),
                   options = list(scrollX = TRUE,
                                  autoWidth = TRUE,
                                  pageLength=7,
@@ -1928,7 +1931,7 @@ SelectFromTable <- function(data, vars.inc=NULL, vars.dec=NULL, output.cols=NULL
     dt <- DT::formatSignif(dt, columns = num_cols, digits = 3)
   }
 
-  #print_table(digits = 3,pageLength=10, filter=list(position="top",clear=F,selection = "multiple"))
+  #print_table(digits = 3,pageLength=10, filter=list(position="top",clear=FALSE,selection = "multiple"))
 
   pal <- "ggthemes::Temperature Diverging" ## "grDevices::Temps"
   #"ggthemes::Red-Green-Gold Diverging"
@@ -2424,8 +2427,8 @@ create_phenot_T3 <- function(dat=NULL, df_corresp_trait=NULL, p2f=NULL,
   idxPerc <- grep("%",colnames(T3.phenot))
 
   if(length(idxPerc) > 0){
-    stopifnot(all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, min, na.rm=T) >= 0),
-              all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, max, na.rm=T) <= 100),
+    stopifnot(all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, min, na.rm=TRUE) >= 0),
+              all(apply(T3.phenot[,idxPerc,drop=FALSE], 2, max, na.rm=TRUE) <= 100),
               all(apply(T3.phenot[,traits,drop=FALSE],2, is.numeric)))
   }
 

@@ -52,11 +52,12 @@ Imports:
       bigstatsr,
       paletteer,
       shiny,
-      stringr,
       SummarizedExperiment,
+      stringr,
       tidyselect,
       tibble
-Remotes:
+Remotes: 
+      bioc::SummarizedExperiment,
       maize-genetics/rTASSEL,
       TriticeaeToolbox/BrAPI.R
 Roxygen: list(markdown = TRUE)
