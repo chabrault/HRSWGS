@@ -39,7 +39,7 @@ jobs:
       # 6️⃣ Install GitHub-only packages
       - name: Install GitHub packages
         run: |
-          R -e 'remotes::install_github("TriticeaeToolbox/BrAPI.R")'
+          R -e 'devtools::install_github("TriticeaeToolbox/BrAPI.R")'
 
       # 7️⃣ Run R CMD check
       - name: Run R CMD check
