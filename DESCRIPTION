@@ -21,8 +21,7 @@ Suggests:
     roxygen2,
     devtools,
     rTASSEL,
-    rJava,
-    BrAPI
+    rJava
 Config/testthat/edition: 3
 Imports: 
       ggplot2,
@@ -36,6 +35,7 @@ Imports:
       magrittr,
       methods,
       BGLR,
+      BrAPI,
       DT,
       caret,
       doSNOW,

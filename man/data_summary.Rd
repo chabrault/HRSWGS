@@ -4,7 +4,7 @@
 \alias{data_summary}
 \title{Print data summary for numeric variables using gtsummary}
 \usage{
-data_summary(data, variables = NULL, by = NULL, add.pval = T)
+data_summary(data, variables = NULL, by = NULL, add.pval = TRUE)
 }
 \arguments{
 \item{data}{data frame with numeric variables}

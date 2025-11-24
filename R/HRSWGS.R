@@ -2011,6 +2011,10 @@ create_accessions_T3 <- function(dat=NULL, checkDB=TRUE, p2f=NULL,return_table=T
                                  purdy_pedigree=NULL,filial_generation=NULL,
                                  species_name="Triticum aestivum"){
 
+  if (!requireNamespace("BrAPI", quietly = TRUE)) {
+    stop("Package 'BrAPI' is required for this feature.", call. = FALSE)
+  }
+
   ## Verifications
   stopifnot(!is.null(dat), !is.null(p2f) |!return_table,
             !is.null(accession_name), !is.null(population_name),
