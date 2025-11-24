@@ -1175,7 +1175,7 @@ getGenoTas_to_DF <- function(tasGeno){
 #' @importFrom parallel makeCluster
 #' @importFrom doSNOW registerDoSNOW
 #' @importFrom foreach foreach %dopar%
-#' @importFrom rrBLUP kinship.BLUP
+#' @importFrom rrBLUP kinship.BLUP kin.blup
 #' @importFrom caret train predict.train
 #' @importFrom randomForest randomForest
 #' @importFrom dplyr bind_rows
@@ -1264,7 +1264,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
             ## set phenotypes to NA for the training set
             data[[tr]][folds[[f]]] <- NA
             ## estimate marker effects on training set
-            res <- rrBLUP::kin.blup(data=data,geno="GID",pheno=tr,K=K)$g.pred
+            res <- rrBLUP::kin.blup(data=data,geno="GID",pheno=tr,K=K)
             return(res$pred[folds[[f]]])
           }
 
@@ -1393,7 +1393,7 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
         ## combine all predicted values across folds
         ### (too few individuals to calculate predictive ability for each fold)
         pred.obs.all <- purrr::map_dfr(out,as.data.frame)
-        pred.obs.all <- data.frame(id_geno=rownames(pred.obs.all),
+        pred.obs.all <- data.frame(GID=rownames(pred.obs.all),
                                    obs=pheno[match(rownames(pred.obs.all),pheno$GID),tr],
                                    pred=pred.obs.all[,1],
                                    trait=tr,rep=r, GP.method=GP.method)
