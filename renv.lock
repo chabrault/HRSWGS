@@ -211,6 +211,32 @@
       "Author": "Martin Morgan [aut], Marcel Ramos [ctb], Bioconductor Package Maintainer [ctb, cre]",
       "Maintainer": "Bioconductor Package Maintainer <maintainer@bioconductor.org>"
     },
+    "BrAPI": {
+      "Package": "BrAPI",
+      "Version": "0.2",
+      "Source": "GitHub",
+      "Date": "2023-07-12",
+      "Title": "BrAPI",
+      "Description": "Simple wrapper functions for httr that make it easier to make manual HTTP calls to a BrAPI server",
+      "Authors@R": "person(\"David\", \"Waring\", , \"djw64@cornell.edu\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0001-9971-9776\"))",
+      "License": "MIT + file LICENSE",
+      "Encoding": "UTF-8",
+      "Depends": [
+        "httr"
+      ],
+      "Roxygen": "list(markdown = TRUE)",
+      "RoxygenNote": "7.2.3",
+      "Collate": "'Connection.R' 'Request.R' 'utils.R' 'known_connections.R'",
+      "RemoteType": "github",
+      "RemoteHost": "api.github.com",
+      "RemoteRepo": "BrAPI.R",
+      "RemoteUsername": "TriticeaeToolbox",
+      "RemoteRef": "HEAD",
+      "RemoteSha": "ea61a272cef2c5440e5400e6d0cf6fe501122421",
+      "NeedsCompilation": "no",
+      "Author": "David Waring [aut, cre] (ORCID: <https://orcid.org/0000-0001-9971-9776>)",
+      "Maintainer": "David Waring <djw64@cornell.edu>"
+    },
     "DT": {
       "Package": "DT",
       "Version": "0.33",
