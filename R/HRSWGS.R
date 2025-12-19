@@ -1198,6 +1198,9 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                              "BayesA","BayesB","BayesC","LASSO"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno))
+  if(!dir.exists(p2d.temp) & !is.null(p2d.temp)){
+    dir.create(p2d.temp, recursive = TRUE)
+  }
 
   ## format inputs
   geno <- as.matrix(geno)
