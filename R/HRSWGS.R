@@ -1198,7 +1198,8 @@ compute_GP_methods <- function(geno, pheno, traits, GP.method, nreps=10,
                              "BayesA","BayesB","BayesC","LASSO"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno))
-  if(!dir.exists(p2d.temp) & !is.null(p2d.temp)){
+  if(!is.null(p2d.temp) && !dir.exists(p2d.temp) &
+     GP.method %in% c("RKHS","RKHS-KA","BayesA","BayesB","BayesC")){
     dir.create(p2d.temp, recursive = TRUE)
   }
 
@@ -1482,6 +1483,10 @@ compute_GP_allGeno <- function(geno, pheno, traits, GP.method,
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno),
             all(traits %in% colnames(pheno)))
+  if(!is.null(p2d.temp) && !dir.exists(p2d.temp) &
+     GP.method %in% c("RKHS","RKHS-KA","BayesA","BayesB","BayesC")){
+    dir.create(p2d.temp, recursive = TRUE)
+  }
 
   ## formatting
   geno <- as.matrix(geno)
