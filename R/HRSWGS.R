@@ -1088,7 +1088,8 @@ format_curate_vcf <- function(vcf.p2f=NULL,
       stop("MAF should be between 0 and 0.5")
     }
 
-    maf <- apply(vcf.num, 2, function(x) {
+    ## for each marker, compute MAF (0/2 alleles)
+    maf <- apply(vcf.num, 1, function(x) {
       t = table(x) ; t = t[names(t) %in% c(0,2)]
       if(length(t) < 2) maf = 0
       else maf = sort(t)[1]/length(x)
