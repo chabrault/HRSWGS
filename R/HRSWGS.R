@@ -749,6 +749,9 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     meta <- vcf@meta
     mrk.info <- tibble::as_tibble(vcfR::getFIX(vcf))
     mrk.info$POS <- as.numeric(mrk.info$POS)
+    if(all(is.na(mrk.info$ID)) & !is.null(rownames(gt))){
+      mrk.info$ID <- rownames(gt)
+    }
     mrk.info <- dplyr::arrange(mrk.info, CHROM,POS)
     ## combine marker information with genotype
     vcf.file <- cbind(mrk.info[,c("CHROM","POS")],gt[mrk.info$ID,])
