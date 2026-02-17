@@ -983,6 +983,10 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     } else {
       ## use the mrk.info from the vcf file, subset selected markers
       mrk.info$ID <- paste0(gsub("Chr","chr",mrk.info$CHROM),"_",mrk.info$POS)
+      ## ID needs to start with chr
+      if(all(grepl("^[1-9]{1}", mrk.info$ID))) {
+        mrk.info$ID <- paste0("chr",mrk.info$ID)
+      }
       mrk.info <- mrk.info[match(rownames(vcf.num), mrk.info$ID),]
     }
     if(!all(c("INFO","FORMAT") %in% colnames(mrk.info))){
