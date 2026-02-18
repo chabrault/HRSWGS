@@ -797,8 +797,8 @@ format_curate_vcf <- function(vcf.p2f=NULL,
     }
 
     colnames(vcf.file) <- plyr::mapvalues(colnames(vcf.file),
-                                          from=corresp.geno.name[,1],
-                                          to=corresp.geno.name[,2], warn_missing=FALSE)
+                                          from=corresp.geno.name[[1]],
+                                          to=corresp.geno.name[[2]], warn_missing=FALSE)
   }
 
   ## handle unknown chromosome, remove markers if few
