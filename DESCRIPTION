@@ -35,7 +35,6 @@ Imports:
       magrittr,
       methods,
       BGLR,
-      BrAPI,
       DT,
       caret,
       doSNOW,
@@ -59,7 +58,6 @@ Imports:
 Remotes: 
       bioc::SummarizedExperiment,
       maize-genetics/rTASSEL,
-      TriticeaeToolbox/BrAPI.R
 Roxygen: list(markdown = TRUE)
 License: file LICENSE
 Depends:

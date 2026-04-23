@@ -5,7 +5,8 @@
 \title{Run genomic prediction on all genotypes, output predicted values}
 \usage{
 compute_GP_allGeno(
-  geno,
+  geno = NULL,
+  GRM = NULL,
   pheno,
   traits,
   GP.method,
@@ -27,6 +28,8 @@ compute_GP_allGeno(
 }
 \arguments{
 \item{geno}{genomic data with genotypes in row (GID in rownames) and marker in columns. Values should be column centered and scaled.}
+
+\item{GRM}{if geno is not provided, a genomic relationship matrix needs to be provided. Restrict the methods to GBLUP and RKHS.}
 
 \item{pheno}{phenotypic data with genotypes in row (in GID column) and traits in columns}
 

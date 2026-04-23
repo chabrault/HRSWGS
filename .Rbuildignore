@@ -9,3 +9,5 @@ notebook*
 ^\.github$
 ^LICENSE\.md$
 ^dev$
+^\.positai$
+^\.claude$

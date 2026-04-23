@@ -5,7 +5,8 @@
 \title{Compute genomic prediction different methods}
 \usage{
 compute_GP_methods(
-  geno,
+  geno = NULL,
+  GRM = NULL,
   pheno,
   traits,
   GP.method,
