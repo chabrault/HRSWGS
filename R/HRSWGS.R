@@ -1206,7 +1206,9 @@ compute_GP_methods <- function(geno=NULL, GRM=NULL,
 
 
   ## initial verifications
-  stopifnot(GP.method %in% c("rrBLUP","GBLUP","RKHS","RKHS-KA","BayesA","BayesB","BayesC"),
+  stopifnot(GP.method %in% c("rrBLUP","GBLUP","RKHS","RKHS-KA",
+                             "BayesA","BayesB","BayesC", "RandomForest",
+                             "LASSO"),
             #"LASSO","RKHS-KA","RandomForest"),
             all(is.numeric(h)), length(GP.method) == 1,
             "GID" %in% colnames(pheno),
@@ -1267,6 +1269,7 @@ compute_GP_methods <- function(geno=NULL, GRM=NULL,
 
       ## vector of phenotypic values
       y <- pheno_tr[[tr]] ; names(y) <- inds
+      stopifnot(!any(is.na(y)))
       ## genomic relationship matrix
       #G <- as.matrix(crossprod(geno_tr)/ncol(geno_tr))
       ## create cluster
@@ -1417,6 +1420,7 @@ compute_GP_methods <- function(geno=NULL, GRM=NULL,
           ## ---- RandomForest ----
         } else if(GP.method %in% "RandomForest"){
           requireNamespace("caret")
+          requireNamespace("randomForest")
 
           ## optimize mtry = number of randomly selected variables at each split
           #tunegridrf <- expand.grid(.mtry=seq(1,ncol(geno_tr)/3,length.out=nb.mtry))
@@ -1426,12 +1430,13 @@ compute_GP_methods <- function(geno=NULL, GRM=NULL,
                                   .packages="caret",.combine = "rbind") %dopar%
             {
               ## estimate marker effects on training set
-
-              fit <- caret::train(y=y[-folds[[f]]],
-                                  x=geno_tr[-folds[[f]],],
-                                  method = "rf",tuneGrid = tunegridrf, ntree=ntree)
+              yNA <- y
+              yNA[folds[[f]]] <- NA
+              fit <- caret::train(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],],
+                                  method = "rf",
+                                  tuneGrid = tunegridrf, ntree=ntree)
               ## output predicted values
-              tmp <- data.frame(GID=yNA$GID[folds[[f]]], GP.method=GP.method,
+              tmp <- data.frame(GID=inds[folds[[f]]], GP.method=GP.method,
                                 trait=tr,
                                 pred=c(caret::predict.train(fit,geno_tr[folds[[f]],])),
                                 rep=r, fold=f)
@@ -1448,7 +1453,7 @@ compute_GP_methods <- function(geno=NULL, GRM=NULL,
               fit <- glmnet::glmnet(y=y[-folds[[f]]],x=geno_tr[-folds[[f]],],
                                     alpha=1,lambda=cv$lambda.min)
               ## output predicted values
-              tmp <- data.frame(GID=yNA$GID[folds[[f]]], GP.method=GP.method,
+              tmp <- data.frame(GID=inds[folds[[f]]], GP.method=GP.method,
                                 trait=tr,
                                 pred=c(geno_tr[folds[[f]],] %*% as.matrix(fit$beta)),
                                 rep=r, fold=f)
@@ -1466,12 +1471,14 @@ compute_GP_methods <- function(geno=NULL, GRM=NULL,
               p2f.temp <- paste0(p2d.temp,"/",GP.method,"_",tr,"_",r,"_",f,"_")
             }
             ## estimate marker effects on training set
-            fit <- BGLR::BGLR(y=y[-folds[[f]]],
-                              ETA=list(list(X=geno_tr[-folds[[f]],],model=GP.method)),
+            yNA <- y
+            yNA[folds[[f]]] <- NA
+            fit <- BGLR::BGLR(y=yNA,
+                              ETA=list(list(X=geno_tr,model=GP.method)),
                               nIter=nIter,burnIn=burnIn,
                               saveAt=p2f.temp,verbose=FALSE)
             ## output predicted values
-            tmp <- data.frame(GID=yNA$GID[folds[[f]]], GP.method=GP.method,
+            tmp <- data.frame(GID=names(yNA)[folds[[f]]], GP.method=GP.method,
                               trait=tr,pred=fit$yHat[folds[[f]]], rep=r, fold=f)
             return(tmp)
           }
@@ -1518,6 +1525,7 @@ compute_GP_methods <- function(geno=NULL, GRM=NULL,
   return(list(obspred=pred.list, gp.stats=gp.stats))
 
 }
+
 
 #' Run genomic prediction on all genotypes, output predicted values
 #'
